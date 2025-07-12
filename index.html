@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CutMask-Image Portion Remover.</title>
+  <link href="https://cdn.jsdelivr.net/npm/cropperjs@1.5.13/dist/cropper.min.css" rel="stylesheet" />
   <style>
     :root {
       --primary: #00ff9d;
@@ -400,6 +401,26 @@
       cursor: pointer;
     }
     
+    /* Crop tool specific styles */
+    .crop-aspect-ratio {
+      display: none;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+      width: 100%;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    
+    .crop-aspect-ratio select {
+      padding: 0.5rem;
+      border-radius: 8px;
+      background: var(--glass);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--light);
+      cursor: pointer;
+    }
+    
     @media (max-width: 768px) {
       body {
         padding: 1.5rem;
@@ -428,7 +449,7 @@
         justify-content: center;
       }
       
-      .tool-options {
+      .tool-options, .crop-aspect-ratio {
         flex-direction: column;
         align-items: flex-start;
         gap: 0.75rem;
@@ -511,11 +532,17 @@
         </svg>
         Draw
       </button>
-      <button id="rotateBtn" class="btn btn-tertiary">
+      <button id="rotateBtn" class="btn btn-secondary">
         <svg viewBox="0 0 24 24">
           <path d="M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L6.7 14.8c-.45-.83-.7-1.79-.7-2.8 0-3.31 2.69-6 6-6zm6.76 1.74L17.3 9.2c.44.84.7 1.79.7 2.8 0 3.31-2.69 6-6 6v-3l-4 4 4 4v-3c4.42 0 8-3.58 8-8 0-1.57-.46-3.03-1.24-4.26z"/>
         </svg>
         Rotate
+      </button>
+      <button id="cropBtn" class="btn btn-secondary">
+        <svg viewBox="0 0 24 24">
+          <path d="M17 15h2V7c0-1.1-.9-2-2-2H9v2h8v8zM7 17V1H5v4H1v2h4v10c0 1.1.9 2 2 2h10v4h2v-4h4v-2H7z"/>
+        </svg>
+        Crop
       </button>
       <button id="applyBtn" class="btn btn-primary" style="display: none;">
         <svg viewBox="0 0 24 24">
@@ -550,6 +577,17 @@
       <span id="brushSizeValue">5</span>
     </div>
     
+    <div class="crop-aspect-ratio" id="cropAspectRatio">
+      <label for="aspectRatio">Aspect Ratio:</label>
+      <select id="aspectRatio">
+        <option value="NaN">Free</option>
+        <option value="1">1:1</option>
+        <option value="4/3">4:3</option>
+        <option value="16/9">16:9</option>
+        <option value="3/4">3:4</option>
+      </select>
+    </div>
+    
     <div class="canvas-container">
       <canvas id="canvas"></canvas>
     </div>
@@ -564,6 +602,7 @@
     </div>
   </div>
 
+<script src="https://cdn.jsdelivr.net/npm/cropperjs@1.5.13/dist/cropper.min.js"></script>
 <script>
     const upload = document.getElementById('upload');
     const canvas = document.getElementById('canvas');
@@ -574,6 +613,7 @@
     const pixelateBtn = document.getElementById('pixelateBtn');
     const drawBtn = document.getElementById('drawBtn');
     const rotateBtn = document.getElementById('rotateBtn');
+    const cropBtn = document.getElementById('cropBtn');
     const applyBtn = document.getElementById('applyBtn');
     const downloadLink = document.getElementById('downloadLink');
     const canvasContainer = document.querySelector('.canvas-container');
@@ -582,6 +622,8 @@
     const blurOptions = document.getElementById('blurOptions');
     const pixelateOptions = document.getElementById('pixelateOptions');
     const drawOptions = document.getElementById('drawOptions');
+    const cropAspectRatio = document.getElementById('cropAspectRatio');
+    const aspectRatio = document.getElementById('aspectRatio');
     const blackoutColor = document.getElementById('blackoutColor');
     const blurAmount = document.getElementById('blurAmount');
     const blurAmountValue = document.getElementById('blurAmountValue');
@@ -607,6 +649,7 @@
     let lastX = 0;
     let lastY = 0;
     let rotationAngle = 0;
+    let cropper = null;
 
     // Drag and drop functionality
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -681,6 +724,10 @@
       downloadLink.classList.remove('active');
       downloadLink.href = '';
       upload.value = '';
+      if (cropper) {
+        cropper.destroy();
+        cropper = null;
+      }
     }
 
     function loadImageToCanvas(imageSrc) {
@@ -727,7 +774,13 @@
       blurOptions.style.display = 'none';
       pixelateOptions.style.display = 'none';
       drawOptions.style.display = 'none';
+      cropAspectRatio.style.display = 'none';
+      applyBtn.style.display = 'none';
       instructions.textContent = "Drag vertically on the image to select the area you want to remove";
+      if (cropper) {
+        cropper.destroy();
+        cropper = null;
+      }
     });
 
     blackoutBtn.addEventListener('click', () => {
@@ -739,7 +792,13 @@
       blurOptions.style.display = 'none';
       pixelateOptions.style.display = 'none';
       drawOptions.style.display = 'none';
+      cropAspectRatio.style.display = 'none';
+      applyBtn.style.display = 'none';
       instructions.textContent = "Drag on the image to select the area you want to black-out";
+      if (cropper) {
+        cropper.destroy();
+        cropper = null;
+      }
     });
 
     blurBtn.addEventListener('click', () => {
@@ -751,7 +810,13 @@
       blurOptions.style.display = 'flex';
       pixelateOptions.style.display = 'none';
       drawOptions.style.display = 'none';
+      cropAspectRatio.style.display = 'none';
+      applyBtn.style.display = 'none';
       instructions.textContent = "Drag on the image to select the area you want to blur";
+      if (cropper) {
+        cropper.destroy();
+        cropper = null;
+      }
     });
 
     pixelateBtn.addEventListener('click', () => {
@@ -763,7 +828,13 @@
       blurOptions.style.display = 'none';
       pixelateOptions.style.display = 'flex';
       drawOptions.style.display = 'none';
+      cropAspectRatio.style.display = 'none';
+      applyBtn.style.display = 'none';
       instructions.textContent = "Drag on the image to select the area you want to pixelate";
+      if (cropper) {
+        cropper.destroy();
+        cropper = null;
+      }
     });
 
     drawBtn.addEventListener('click', () => {
@@ -775,7 +846,13 @@
       blurOptions.style.display = 'none';
       pixelateOptions.style.display = 'none';
       drawOptions.style.display = 'flex';
+      cropAspectRatio.style.display = 'none';
+      applyBtn.style.display = 'none';
       instructions.textContent = "Click and drag to draw on the image";
+      if (cropper) {
+        cropper.destroy();
+        cropper = null;
+      }
     });
 
     rotateBtn.addEventListener('click', () => {
@@ -788,13 +865,74 @@
       rotateImage();
     });
 
+    cropBtn.addEventListener('click', () => {
+      if (!img.src) {
+        showAlert("Please upload an image first!");
+        return;
+      }
+      
+      currentTool = 'crop';
+      resetToolButtons();
+      cropBtn.classList.add('btn-primary');
+      cropBtn.classList.add('active-tool');
+      blackoutOptions.style.display = 'none';
+      blurOptions.style.display = 'none';
+      pixelateOptions.style.display = 'none';
+      drawOptions.style.display = 'none';
+      cropAspectRatio.style.display = 'flex';
+      applyBtn.style.display = 'flex';
+      instructions.textContent = "Drag the corners to select the area you want to crop";
+      
+      // Initialize Cropper.js
+      if (!cropper) {
+        // Create a temporary image element for Cropper.js
+        const tempImg = new Image();
+        tempImg.onload = () => {
+          // Set canvas to display mode for Cropper.js
+          canvas.style.width = 'auto';
+          canvas.style.height = 'auto';
+          
+          // Initialize Cropper
+          cropper = new Cropper(canvas, {
+            viewMode: 1,
+            responsive: true,
+            background: false,
+            zoomable: false,
+            movable: false,
+            rotatable: false,
+            scalable: false,
+            cropBoxMovable: true,
+            cropBoxResizable: true,
+            autoCrop: false, // Disable auto-crop
+            guides: true,
+            highlight: true,
+            dragMode: 'crop'
+          });
+          
+          // Set initial aspect ratio
+          const val = eval(aspectRatio.value);
+          cropper.setAspectRatio(val);
+        };
+        tempImg.src = img.src;
+      }
+    });
+
+    // Handle aspect ratio change for crop tool
+    aspectRatio.addEventListener('change', function() {
+      if (cropper) {
+        const val = eval(this.value);
+        cropper.setAspectRatio(val);
+      }
+    });
+
     function resetToolButtons() {
       cutBtn.className = 'btn btn-secondary';
       blackoutBtn.className = 'btn btn-secondary';
       blurBtn.className = 'btn btn-secondary';
       pixelateBtn.className = 'btn btn-secondary';
       drawBtn.className = 'btn btn-secondary';
-      rotateBtn.className = 'btn btn-tertiary';
+      rotateBtn.className = 'btn btn-secondary';
+      cropBtn.className = 'btn btn-secondary';
     }
 
     // Initialize with cut tool selected
@@ -867,7 +1005,7 @@
     }
 
     canvas.addEventListener('mousedown', e => {
-      if (!img.src) return;
+      if (!img.src || currentTool === 'crop') return;
       
       const rect = canvas.getBoundingClientRect();
       const mouseX = (e.clientX - rect.left) / scaleFactor;
@@ -895,7 +1033,7 @@
     });
 
     canvas.addEventListener('mousemove', e => {
-      if (!img.src) return;
+      if (!img.src || currentTool === 'crop') return;
       
       const rect = canvas.getBoundingClientRect();
       const mouseX = (e.clientX - rect.left) / scaleFactor;
@@ -1008,12 +1146,12 @@
     }
 
     applyBtn.addEventListener('click', () => {
-      if (!hasSelection) {
+      if (currentTool === 'crop') {
+        applyCrop();
+      } else if (!hasSelection) {
         showAlert("Please select an area first!");
         return;
-      }
-
-      if (currentTool === 'blackout') {
+      } else if (currentTool === 'blackout') {
         applyBlackout();
       } else if (currentTool === 'cut') {
         applyCut();
@@ -1080,6 +1218,53 @@
       downloadLink.classList.add('active');
       
       showAlert("Section removed successfully!", "success");
+    }
+
+    function applyCrop() {
+      if (!cropper) {
+        showAlert("Please select a crop area first!");
+        return;
+      }
+
+      const croppedCanvas = cropper.getCroppedCanvas({ imageSmoothingQuality: 'high' });
+      if (!croppedCanvas) {
+        showAlert("Please select a crop area first!");
+        return;
+      }
+
+      // Update canvas dimensions
+      canvas.width = croppedCanvas.width;
+      canvas.height = croppedCanvas.height;
+      
+      // Update display dimensions
+      const maxWidth = window.innerWidth - 40;
+      const maxHeight = window.innerHeight * 0.7;
+      scaleFactor = Math.min(
+        maxWidth / canvas.width,
+        maxHeight / canvas.height,
+        1
+      );
+      canvas.style.width = `${canvas.width * scaleFactor}px`;
+      canvas.style.height = `${canvas.height * scaleFactor}px`;
+      
+      // Draw the cropped image
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(croppedCanvas, 0, 0);
+      
+      // Update image data
+      img.src = canvas.toDataURL();
+      
+      // Enable download
+      downloadLink.href = canvas.toDataURL();
+      downloadLink.classList.add('active');
+      
+      // Destroy cropper and reset to normal mode
+      cropper.destroy();
+      cropper = null;
+      currentTool = 'cut';
+      cutBtn.click();
+      
+      showAlert("Image cropped successfully!", "success");
     }
 
     function applyBlur() {
