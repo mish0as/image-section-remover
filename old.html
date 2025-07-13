@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CutMask-Image Portion Remover.</title>
+  <link href="https://cdn.jsdelivr.net/npm/cropperjs@1.5.13/dist/cropper.min.css" rel="stylesheet" />
+  <style>
+    :root {
+      --primary: #00ff9d;
+      --secondary: #00b8ff;
+      --tertiary: #ff00aa;
+      --quaternary: #10b981;
+      --dark: #121212;
+      --darker: #0a0a0a;
+      --light: #f5f5f5;
+      --overlay: rgba(0, 255, 157, 0.2);
+      --glass: rgba(255, 255, 255, 0.05);
+      --shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      background: var(--dark);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--light);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+      background-image: 
+        radial-gradient(circle at 25% 25%, rgba(0, 255, 157, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 75% 75%, rgba(0, 184, 255, 0.1) 0%, transparent 50%);
+    }
+    
+    .container {
+      width: 100%;
+      max-width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+    }
+    
+    header {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      position: relative;
+      padding-bottom: 1rem;
+      width: 100%;
+    }
+    
+    header::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100px;
+      height: 4px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      border-radius: 2px;
+    }
+    
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.5px;
+      position: relative;
+      display: inline-block;
+      padding: 0 1rem;
+    }
+    
+    h1::before, h1::after {
+      content: '✂️';
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 1.5rem;
+    }
+    
+    h1::before {
+      left: -10px;
+    }
+    
+    h1::after {
+      right: -10px;
+    }
+    
+    .upload-area {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+    
+    .file-input {
+      display: none;
+    }
+    
+    .drop-container {
+      position: relative;
+      width: 100%;
+      max-width: 300px;
+      height: 190px;
+      border: 2px dashed rgba(255, 255, 255, 0.2);
+      border-radius: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      text-align: center;
+      transition: all 0.3s ease;
+      background: var(--glass);
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow);
+      cursor: pointer;
+    }
+    
+    .drop-container:hover {
+      border-color: var(--primary);
+      background: rgba(0, 255, 157, 0.05);
+    }
+    
+    .drop-container.active {
+      border-color: var(--primary);
+      background: rgba(0, 255, 157, 0.1);
+    }
+    
+    .drop-title {
+      font-size: 1.1rem;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+      color: var(--primary);
+    }
+    
+    .drop-subtitle {
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.6);
+      margin-bottom: 1rem;
+    }
+    
+    .file-label {
+      padding: 0.5rem 0.5rem;
+      background: var(--glass);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 500;
+      backdrop-filter: blur(10px);
+      box-shadow: var(--shadow);
+    }
+    
+    .file-label:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateY(-2px);
+    }
+    
+    .file-label svg {
+      width: 20px;
+      height: 20px;
+      fill: var(--primary);
+    }
+    
+    .canvas-container {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      max-width: 100%;
+      max-height: 70vh;
+      display: flex;
+      justify-content: center;
+    }
+    
+    canvas {
+      display: block;
+      max-width: 100%;
+      max-height: 70vh;
+      object-fit: contain;
+      cursor: crosshair;
+      transition: all 0.3s ease;
+    }
+    
+    canvas:active {
+      filter: brightness(1.05);
+    }
+    
+    .instructions {
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 0.9rem;
+      text-align: center;
+      margin-top: -0.5rem;
+    }
+    
+    .controls {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    
+    .tool-buttons {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    
+    .btn {
+      padding: 0.5rem 0.7rem;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      position: relative;
+    }
+    
+    .btn-primary {
+      background: var(--primary);
+      color: var(--darker);
+      box-shadow: 0 4px 15px rgba(0, 255, 157, 0.3);
+    }
+    
+    .btn-primary:hover {
+      background: #00e68a;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 255, 157, 0.4);
+    }
+    
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+    
+    .btn-secondary {
+      background: var(--tertiary);
+      color: var(--darker);
+      box-shadow: 0 4px 15px rgba(255, 0, 170, 0.3);
+    }
+    
+    .btn-secondary:hover {
+      background: #e6009d;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255, 0, 170, 0.4);
+    }
+    
+    .btn-tertiary {
+      background: var(--quaternary);
+      color: var(--darker);
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+    }
+    
+    .btn-tertiary:hover {
+      background: #0d9f6e;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+    }
+    
+    .btn-primary svg, .btn-secondary svg, .btn-tertiary svg {
+      width: 18px;
+      height: 18px;
+    }
+    
+    /* Enhanced active tool indicator */
+    .btn.active-tool {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 25px rgba(0, 255, 157, 0.5);
+      border: 2px solid #e16c6c;
+    }
+    
+    .btn-secondary.active-tool {
+      box-shadow: 0 8px 25px rgba(255, 0, 170, 0.5);
+    }
+    
+    .btn-tertiary.active-tool {
+      box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5);
+    }
+    
+    .btn.active-tool::after {
+      content: '';
+      position: absolute;
+      bottom: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 24px;
+      height: 4px;
+      background: var(--primary);
+      border-radius: 4px;
+      animation: pulse 1.5s infinite;
+    }
+    
+    .btn-secondary.active-tool::after {
+      background: var(--tertiary);
+    }
+    
+    .btn-tertiary.active-tool::after {
+      background: var(--quaternary);
+    }
+    
+    .download-link {
+      margin-top: 1rem;
+      padding: 0.5rem 0.7rem;
+      background: var(--secondary);
+      color: var(--darker);
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(0, 184, 255, 0.3);
+      opacity: 0.5;
+      pointer-events: none;
+    }
+    
+    .download-link.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    
+    .download-link:hover {
+      background: #00a5e0;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 184, 255, 0.4);
+    }
+    
+    .download-link svg {
+      width: 18px;
+      height: 18px;
+    }
+    
+    .tool-options {
+      display: none;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+      width: 100%;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    
+    .tool-options label {
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.7);
+    }
+    
+    .tool-options input {
+      height: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      background: var(--glass);
+      cursor: pointer;
+    }
+    
+    .tool-options input[type="color"] {
+      width: 40px;
+      height: 30px;
+      padding: 2px;
+    }
+    
+    .tool-options input[type="range"] {
+      width: 150px;
+      height: 6px;
+      -webkit-appearance: none;
+      background: var(--darker);
+      border-radius: 3px;
+      outline: none;
+    }
+    
+    .tool-options input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      background: var(--primary);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    
+    /* Crop tool specific styles */
+    .crop-aspect-ratio {
+      display: none;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+      width: 100%;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    
+    .crop-aspect-ratio select {
+      padding: 0.5rem;
+      border-radius: 8px;
+      background: var(--glass);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--light);
+      cursor: pointer;
+    }
+    
+    @media (max-width: 768px) {
+      body {
+        padding: 1.5rem;
+      }
+      
+      h1 {
+        font-size: 2rem;
+      }
+      
+      h1::before, h1::after {
+        font-size: 1.2rem;
+      }
+      
+      .drop-container {
+        height: 180px;
+        padding: 1.5rem;
+      }
+      
+      .tool-buttons {
+        flex-direction: column;
+        width: 100%;
+      }
+      
+      .btn, .download-link {
+        width: 100%;
+        justify-content: center;
+      }
+      
+      .tool-options, .crop-aspect-ratio {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+      }
+      
+      /* Adjust active tool indicator for mobile */
+      .btn.active-tool::after {
+        bottom: -6px;
+        width: 20px;
+        height: 3px;
+      }
+    }
+
+    #applyBtn {
+      display: flex !important; /* Force visibility */
+    }
+
+    /* Animation for active tool indicator */
+    @keyframes pulse {
+      0% { opacity: 0.7; transform: translateX(-50%) scale(0.9); }
+      50% { opacity: 1; transform: translateX(-50%) scale(1.1); }
+      100% { opacity: 0.7; transform: translateX(-50%) scale(0.9); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>CutMask- Image Section Remover</h1>
+    </header>
+    
+    <div class="upload-area">
+      <input type="file" id="upload" class="file-input" accept="image/*">
+      <div class="drop-container" id="dropContainer">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        <h3 class="drop-title">Drop your image here</h3>
+        <p class="drop-subtitle">or click to browse files</p>
+        <label for="upload" class="file-label">
+          <svg viewBox="0 0 24 24">
+            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+          </svg>
+          Select Image
+        </label>
+      </div>
+      <p class="instructions" id="instructions">Select a tool and then draw on the image</p>
+    </div>
+    
+    <div class="tool-buttons">
+      <button id="cutBtn" class="btn btn-primary active-tool">
+        <svg viewBox="0 0 24 24">
+          <path d="M9.64 7.64c.23-.5.36-1.05.36-1.64 0-2.21-1.79-4-4-4S2 3.79 2 6s1.79 4 4 4c.59 0 1.14-.13 1.64-.36L10 12l-2.36 2.36C7.14 14.13 6.59 14 6 14c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4c0-.59-.13-1.14-.36-1.64L12 14l7 7h3v-1L9.64 7.64zM6 8c-1.1 0-2-.89-2-2s.9-2 2-2 2 .89 2 2-.9 2-2 2zm0 12c-1.1 0-2-.89-2-2s.9-2 2-2 2 .89 2 2-.9 2-2 2zm6-7.5c-.28 0-.5-.22-.5-.5s.22-.5.5-.5.5.22.5.5-.22.5-.5.5zM19 3l-6 6 2 2 7-7V3z"/>
+        </svg>
+        Remove & Join
+      </button>
+      <button id="blackoutBtn" class="btn btn-secondary">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9-4.03-9-9-9zm0 16c-3.86 0-7-3.14-7-7s3.14-7 7-7 7 3.14 7 7-3.14 7-7 7z"/>
+        </svg>
+        Black-out
+      </button>
+      <button id="blurBtn" class="btn btn-secondary">
+        <svg viewBox="0 0 24 24">
+          <path d="M6 14c-.55 0-1 .45-1 1v3c0 .55.45 1 1 1h3c.55 0 1-.45 1-1s-.45-1-1-1H7v-2c0-.55-.45-1-1-1zm0-4c.55 0 1-.45 1-1V7h2c.55 0 1-.45 1-1s-.45-1-1-1H6c-.55 0-1 .45-1 1v3c0 .55.45 1 1 1zm11 7h-2c-.55 0-1 .45-1 1s.45 1 1 1h3c.55 0 1-.45 1-1v-3c0-.55-.45-1-1-1s-1 .45-1 1v2zM14 6c0 .55.45 1 1 1h2v2c0 .55.45 1 1 1s1-.45 1-1V6c0-.55-.45-1-1-1h-3c-.55 0-1 .45-1 1z"/>
+        </svg>
+        Blur
+      </button>
+      <button id="pixelateBtn" class="btn btn-secondary">
+        <svg viewBox="0 0 24 24">
+          <path d="M10 4H4v6h6V4zm0 10H4v6h6v-6zm10 0h-6v6h6v-6zm0-10h-6v6h6V4z"/>
+        </svg>
+        Pixelate
+      </button>
+      <button id="drawBtn" class="btn btn-secondary">
+        <svg viewBox="0 0 24 24">
+          <path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25z"/>
+        </svg>
+        Draw
+      </button>
+      <button id="rotateBtn" class="btn btn-secondary">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L6.7 14.8c-.45-.83-.7-1.79-.7-2.8 0-3.31 2.69-6 6-6zm6.76 1.74L17.3 9.2c.44.84.7 1.79.7 2.8 0 3.31-2.69 6-6 6v-3l-4 4 4 4v-3c4.42 0 8-3.58 8-8 0-1.57-.46-3.03-1.24-4.26z"/>
+        </svg>
+        Rotate
+      </button>
+      <button id="cropBtn" class="btn btn-secondary">
+        <svg viewBox="0 0 24 24">
+          <path d="M17 15h2V7c0-1.1-.9-2-2-2H9v2h8v8zM7 17V1H5v4H1v2h4v10c0 1.1.9 2 2 2h10v4h2v-4h4v-2H7z"/>
+        </svg>
+        Crop
+      </button>
+      <button id="applyBtn" class="btn btn-primary" style="display: none;">
+        <svg viewBox="0 0 24 24">
+          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+        </svg>
+        Apply
+      </button>
+    </div>
+    
+    <div class="tool-options" id="blackoutOptions">
+      <label for="blackoutColor">Color:</label>
+      <input type="color" id="blackoutColor" value="#000000">
+    </div>
+    
+    <div class="tool-options" id="blurOptions">
+      <label for="blurAmount">Blur Amount:</label>
+      <input type="range" id="blurAmount" min="1" max="50" value="10">
+      <span id="blurAmountValue">10</span>
+    </div>
+    
+    <div class="tool-options" id="pixelateOptions">
+      <label for="pixelateSize">Pixel Size:</label>
+      <input type="range" id="pixelateSize" min="2" max="50" value="10">
+      <span id="pixelateSizeValue">10</span>
+    </div>
+    
+    <div class="tool-options" id="drawOptions">
+      <label for="drawColor">Color:</label>
+      <input type="color" id="drawColor" value="#ff0000">
+      <label for="brushSize">Brush Size:</label>
+      <input type="range" id="brushSize" min="1" max="50" value="5">
+      <span id="brushSizeValue">5</span>
+    </div>
+    
+    <div class="crop-aspect-ratio" id="cropAspectRatio">
+      <label for="aspectRatio">Aspect Ratio:</label>
+      <select id="aspectRatio">
+        <option value="NaN">Free</option>
+        <option value="1">1:1</option>
+        <option value="4/3">4:3</option>
+        <option value="16/9">16:9</option>
+        <option value="3/4">3:4</option>
+      </select>
+    </div>
+    
+    <div class="canvas-container">
+      <canvas id="canvas"></canvas>
+    </div>
+    
+    <div class="controls">
+      <a id="downloadLink" class="download-link" download="edited-image.png">
+        <svg viewBox="0 0 24 24">
+          <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+        </svg>
+        Download Image
+      </a>
+    </div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/cropperjs@1.5.13/dist/cropper.min.js"></script>
+<script>
+    const upload = document.getElementById('upload');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const cutBtn = document.getElementById('cutBtn');
+    const blackoutBtn = document.getElementById('blackoutBtn');
+    const blurBtn = document.getElementById('blurBtn');
+    const pixelateBtn = document.getElementById('pixelateBtn');
+    const drawBtn = document.getElementById('drawBtn');
+    const rotateBtn = document.getElementById('rotateBtn');
+    const cropBtn = document.getElementById('cropBtn');
+    const applyBtn = document.getElementById('applyBtn');
+    const downloadLink = document.getElementById('downloadLink');
+    const canvasContainer = document.querySelector('.canvas-container');
+    const instructions = document.getElementById('instructions');
+    const blackoutOptions = document.getElementById('blackoutOptions');
+    const blurOptions = document.getElementById('blurOptions');
+    const pixelateOptions = document.getElementById('pixelateOptions');
+    const drawOptions = document.getElementById('drawOptions');
+    const cropAspectRatio = document.getElementById('cropAspectRatio');
+    const aspectRatio = document.getElementById('aspectRatio');
+    const blackoutColor = document.getElementById('blackoutColor');
+    const blurAmount = document.getElementById('blurAmount');
+    const blurAmountValue = document.getElementById('blurAmountValue');
+    const pixelateSize = document.getElementById('pixelateSize');
+    const pixelateSizeValue = document.getElementById('pixelateSizeValue');
+    const drawColor = document.getElementById('drawColor');
+    const brushSize = document.getElementById('brushSize');
+    const brushSizeValue = document.getElementById('brushSizeValue');
+    const dropContainer = document.getElementById('dropContainer');
+    const fileLabel = document.querySelector('.file-label');
+
+    let img = new Image();
+    let originalImage = null;
+    let cropStartX = 0;
+    let cropStartY = 0;
+    let cropEndX = 0;
+    let cropEndY = 0;
+    let isDragging = false;
+    let hasSelection = false;
+    let scaleFactor = 1;
+    let currentTool = 'cut';
+    let isDrawing = false;
+    let lastX = 0;
+    let lastY = 0;
+    let rotationAngle = 0;
+    let cropper = null;
+
+    // Drag and drop functionality
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      dropContainer.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropContainer.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropContainer.addEventListener(eventName, unhighlight, false);
+    });
+
+    function highlight() {
+      dropContainer.classList.add('active');
+    }
+
+    function unhighlight() {
+      dropContainer.classList.remove('active');
+    }
+
+    dropContainer.addEventListener('drop', handleDrop, false);
+
+    function handleDrop(e) {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      
+      if (files.length) {
+        handleFiles(files);
+      }
+    }
+
+    // Fixed click handling to prevent double selection
+    fileLabel.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+
+    dropContainer.addEventListener('click', (e) => {
+      if (e.target === dropContainer) {
+        upload.click();
+      }
+    });
+
+    upload.addEventListener('change', e => {
+      if (e.target.files.length) {
+        handleFiles(e.target.files);
+      }
+    });
+
+    function handleFiles(files) {
+      const file = files[0];
+      if (!file.type.match('image.*')) {
+        showAlert("Please select an image file!");
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        loadImageToCanvas(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function resetImage() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      downloadLink.classList.remove('active');
+      downloadLink.href = '';
+      upload.value = '';
+      if (cropper) {
+        cropper.destroy();
+        cropper = null;
+      }
+    }
+
+    function loadImageToCanvas(imageSrc) {
+      img.onload = () => {
+        // Calculate scaling to fit within viewport
+        const maxWidth = window.innerWidth - 40;
+        const maxHeight = window.innerHeight * 0.7;
+        
+        scaleFactor = Math.min(
+          maxWidth / img.width,
+          maxHeight / img.height,
+          1
+        );
+        
+        // Set canvas display dimensions (scaled down)
+        canvas.style.width = `${img.width * scaleFactor}px`;
+        canvas.style.height = `${img.height * scaleFactor}px`;
+        
+        // Set canvas internal dimensions (original size)
+        canvas.width = img.width;
+        canvas.height = img.height;
+        
+        // Draw the image at original size
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
+        // Store the original image
+        originalImage = new Image();
+        originalImage.src = img.src;
+        
+        downloadLink.classList.add('active');
+        rotationAngle = 0;
+      };
+      
+      img.src = imageSrc;
+    }
+
+    // Tool selection
+    cutBtn.addEventListener('click', () => {
+      currentTool = 'cut';
+      resetToolButtons();
+      cutBtn.classList.add('btn-primary');
+      cutBtn.classList.add('active-tool');
+      blackoutOptions.style.display = 'none';
+      blurOptions.style.display = 'none';
+      pixelateOptions.style.display = 'none';
+      drawOptions.style.display = 'none';
+      cropAspectRatio.style.display = 'none';
+      applyBtn.style.display = 'none';
+      instructions.textContent = "Drag vertically on the image to select the area you want to remove";
+      if (cropper) {
+        cropper.destroy();
+        cropper = null;
+      }
+    });
+
+    blackoutBtn.addEventListener('click', () => {
+      currentTool = 'blackout';
+      resetToolButtons();
+      blackoutBtn.classList.add('btn-primary');
+      blackoutBtn.classList.add('active-tool');
+      blackoutOptions.style.display = 'flex';
+      blurOptions.style.display = 'none';
+      pixelateOptions.style.display = 'none';
+      drawOptions.style.display = 'none';
+      cropAspectRatio.style.display = 'none';
+      applyBtn.style.display = 'none';
+      instructions.textContent = "Drag on the image to select the area you want to black-out";
+      if (cropper) {
+        cropper.destroy();
+        cropper = null;
+      }
+    });
+
+    blurBtn.addEventListener('click', () => {
+      currentTool = 'blur';
+      resetToolButtons();
+      blurBtn.classList.add('btn-primary');
+      blurBtn.classList.add('active-tool');
+      blackoutOptions.style.display = 'none';
+      blurOptions.style.display = 'flex';
+      pixelateOptions.style.display = 'none';
+      drawOptions.style.display = 'none';
+      cropAspectRatio.style.display = 'none';
+      applyBtn.style.display = 'none';
+      instructions.textContent = "Drag on the image to select the area you want to blur";
+      if (cropper) {
+        cropper.destroy();
+        cropper = null;
+      }
+    });
+
+    pixelateBtn.addEventListener('click', () => {
+      currentTool = 'pixelate';
+      resetToolButtons();
+      pixelateBtn.classList.add('btn-primary');
+      pixelateBtn.classList.add('active-tool');
+      blackoutOptions.style.display = 'none';
+      blurOptions.style.display = 'none';
+      pixelateOptions.style.display = 'flex';
+      drawOptions.style.display = 'none';
+      cropAspectRatio.style.display = 'none';
+      applyBtn.style.display = 'none';
+      instructions.textContent = "Drag on the image to select the area you want to pixelate";
+      if (cropper) {
+        cropper.destroy();
+        cropper = null;
+      }
+    });
+
+    drawBtn.addEventListener('click', () => {
+      currentTool = 'draw';
+      resetToolButtons();
+      drawBtn.classList.add('btn-primary');
+      drawBtn.classList.add('active-tool');
+      blackoutOptions.style.display = 'none';
+      blurOptions.style.display = 'none';
+      pixelateOptions.style.display = 'none';
+      drawOptions.style.display = 'flex';
+      cropAspectRatio.style.display = 'none';
+      applyBtn.style.display = 'none';
+      instructions.textContent = "Click and drag to draw on the image";
+      if (cropper) {
+        cropper.destroy();
+        cropper = null;
+      }
+    });
+
+    rotateBtn.addEventListener('click', () => {
+      if (!img.src) {
+        showAlert("Please upload an image first!");
+        return;
+      }
+      
+      rotationAngle = (rotationAngle + 90) % 360;
+      rotateImage();
+    });
+
+    cropBtn.addEventListener('click', () => {
+      if (!img.src) {
+        showAlert("Please upload an image first!");
+        return;
+      }
+      
+      currentTool = 'crop';
+      resetToolButtons();
+      cropBtn.classList.add('btn-primary');
+      cropBtn.classList.add('active-tool');
+      blackoutOptions.style.display = 'none';
+      blurOptions.style.display = 'none';
+      pixelateOptions.style.display = 'none';
+      drawOptions.style.display = 'none';
+      cropAspectRatio.style.display = 'flex';
+      applyBtn.style.display = 'flex';
+      instructions.textContent = "Drag the corners to select the area you want to crop";
+      
+      // Initialize Cropper.js
+      if (!cropper) {
+        // Create a temporary image element for Cropper.js
+        const tempImg = new Image();
+        tempImg.onload = () => {
+          // Set canvas to display mode for Cropper.js
+          canvas.style.width = 'auto';
+          canvas.style.height = 'auto';
+          
+          // Initialize Cropper
+          cropper = new Cropper(canvas, {
+            viewMode: 1,
+            responsive: true,
+            background: false,
+            zoomable: false,
+            movable: false,
+            rotatable: false,
+            scalable: false,
+            cropBoxMovable: true,
+            cropBoxResizable: true,
+            autoCrop: false, // Disable auto-crop
+            guides: true,
+            highlight: true,
+            dragMode: 'crop'
+          });
+          
+          // Set initial aspect ratio
+          const val = eval(aspectRatio.value);
+          cropper.setAspectRatio(val);
+        };
+        tempImg.src = img.src;
+      }
+    });
+
+    // Handle aspect ratio change for crop tool
+    aspectRatio.addEventListener('change', function() {
+      if (cropper) {
+        const val = eval(this.value);
+        cropper.setAspectRatio(val);
+      }
+    });
+
+    function resetToolButtons() {
+      cutBtn.className = 'btn btn-secondary';
+      blackoutBtn.className = 'btn btn-secondary';
+      blurBtn.className = 'btn btn-secondary';
+      pixelateBtn.className = 'btn btn-secondary';
+      drawBtn.className = 'btn btn-secondary';
+      rotateBtn.className = 'btn btn-secondary';
+      cropBtn.className = 'btn btn-secondary';
+    }
+
+    // Initialize with cut tool selected
+    cutBtn.click();
+
+    // Update slider values
+    blurAmount.addEventListener('input', () => {
+      blurAmountValue.textContent = blurAmount.value;
+    });
+
+    pixelateSize.addEventListener('input', () => {
+      pixelateSizeValue.textContent = pixelateSize.value;
+    });
+
+    brushSize.addEventListener('input', () => {
+      brushSizeValue.textContent = brushSize.value;
+    });
+
+    function rotateImage() {
+      if (!img.src) return;
+      
+      // Create a temporary canvas to perform the rotation
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      
+      // Swap width and height for 90/270 degree rotations
+      if (rotationAngle % 180 === 90) {
+        tempCanvas.width = canvas.height;
+        tempCanvas.height = canvas.width;
+      } else {
+        tempCanvas.width = canvas.width;
+        tempCanvas.height = canvas.height;
+      }
+      
+      // Clear and rotate the temporary canvas
+      tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+      tempCtx.save();
+      tempCtx.translate(tempCanvas.width / 2, tempCanvas.height / 2);
+      tempCtx.rotate(rotationAngle * Math.PI / 180);
+      tempCtx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2);
+      tempCtx.restore();
+      
+      // Update the main canvas dimensions
+      canvas.width = tempCanvas.width;
+      canvas.height = tempCanvas.height;
+      
+      // Update display dimensions
+      const maxWidth = window.innerWidth - 40;
+      const maxHeight = window.innerHeight * 0.7;
+      scaleFactor = Math.min(
+        maxWidth / canvas.width,
+        maxHeight / canvas.height,
+        1
+      );
+      canvas.style.width = `${canvas.width * scaleFactor}px`;
+      canvas.style.height = `${canvas.height * scaleFactor}px`;
+      
+      // Draw the rotated image
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(tempCanvas, 0, 0);
+      
+      // Update image data
+      img.src = canvas.toDataURL();
+      
+      // Enable download
+      downloadLink.href = canvas.toDataURL();
+      downloadLink.classList.add('active');
+      
+      showAlert(`Image rotated ${rotationAngle} degrees!`, "success");
+    }
+
+    canvas.addEventListener('mousedown', e => {
+      if (!img.src || currentTool === 'crop') return;
+      
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = (e.clientX - rect.left) / scaleFactor;
+      const mouseY = (e.clientY - rect.top) / scaleFactor;
+      
+      if (currentTool === 'draw') {
+        isDrawing = true;
+        lastX = mouseX;
+        lastY = mouseY;
+        
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = drawColor.value;
+        ctx.lineWidth = parseInt(brushSize.value);
+        return;
+      }
+      
+      cropStartX = mouseX;
+      cropStartY = mouseY;
+      isDragging = true;
+      hasSelection = false;
+      applyBtn.style.display = 'flex';
+    });
+
+    canvas.addEventListener('mousemove', e => {
+      if (!img.src || currentTool === 'crop') return;
+      
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = (e.clientX - rect.left) / scaleFactor;
+      const mouseY = (e.clientY - rect.top) / scaleFactor;
+      
+      if (currentTool === 'draw' && isDrawing) {
+        ctx.lineTo(mouseX, mouseY);
+        ctx.stroke();
+        lastX = mouseX;
+        lastY = mouseY;
+        return;
+      }
+      
+      if (!isDragging) return;
+      
+      cropEndX = mouseX;
+      cropEndY = mouseY;
+      
+      // Always draw selection for all tools except blur and pixelate
+      if (currentTool !== 'blur' && currentTool !== 'pixelate') {
+        drawWithSelection();
+      } else {
+        // For blur and pixelate tools, just show the selection rectangle without fill
+        drawSelectionOverlay();
+      }
+    });
+
+    function drawSelectionOverlay() {
+      // Redraw the original image first
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      if (!isDragging && !hasSelection) return;
+      
+      const x = Math.min(cropStartX, cropEndX);
+      const y = Math.min(cropStartY, cropEndY);
+      const w = Math.abs(cropEndX - cropStartX);
+      const h = Math.abs(cropEndY - cropStartY);
+
+      // Draw semi-transparent overlay
+      ctx.fillStyle = 'rgba(0, 184, 255, 0.2)'; // Light blue with 20% opacity
+      ctx.fillRect(x, y, w, h);
+      
+      // Draw dashed border
+      ctx.strokeStyle = '#00b8ff';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      ctx.strokeRect(x, y, w, h);
+      ctx.setLineDash([]);
+    }
+
+    canvas.addEventListener('mouseup', () => {
+      if (currentTool === 'draw') {
+        isDrawing = false;
+        img.src = canvas.toDataURL();
+        downloadLink.href = canvas.toDataURL();
+        downloadLink.classList.add('active');
+        return;
+      }
+      
+      if (!isDragging || !img.src) return;
+      isDragging = false;
+      hasSelection = true;
+      
+      if (currentTool === 'blur') {
+        applyBlur();
+        applyBtn.style.display = 'none';
+      } else if (currentTool === 'pixelate') {
+        applyPixelate();
+        applyBtn.style.display = 'none';
+      }
+    });
+
+    canvas.addEventListener('mouseleave', () => {
+      isDragging = false;
+      isDrawing = false;
+    });
+
+    function drawWithSelection() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      if (!isDragging && !hasSelection) return;
+      
+      const x = Math.min(cropStartX, cropEndX);
+      const y = Math.min(cropStartY, cropEndY);
+      const w = currentTool === 'cut' ? canvas.width : Math.abs(cropEndX - cropStartX);
+      const h = Math.abs(cropEndY - cropStartY);
+
+      if (currentTool === 'cut') {
+        const gradient = ctx.createLinearGradient(0, y, 0, y + h);
+        gradient.addColorStop(0, 'rgba(255, 50, 50, 0.3)');
+        gradient.addColorStop(0.5, 'rgba(255, 0, 0, 0.5)');
+        gradient.addColorStop(1, 'rgba(255, 50, 50, 0.3)');
+        
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, y, canvas.width, h);
+        
+        ctx.strokeStyle = '#ff0000';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(0, y, canvas.width, h);
+      } else if (currentTool === 'blackout') {
+        ctx.fillStyle = 'rgba(255, 0, 170, 0.3)';
+        ctx.fillRect(x, y, w, h);
+        
+        ctx.strokeStyle = blackoutColor.value;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, w, h);
+      }
+    }
+
+    applyBtn.addEventListener('click', () => {
+      if (currentTool === 'crop') {
+        applyCrop();
+      } else if (!hasSelection) {
+        showAlert("Please select an area first!");
+        return;
+      } else if (currentTool === 'blackout') {
+        applyBlackout();
+      } else if (currentTool === 'cut') {
+        applyCut();
+      }
+    });
+
+    function applyBlackout() {
+      const x = Math.min(cropStartX, cropEndX);
+      const y = Math.min(cropStartY, cropEndY);
+      const w = Math.abs(cropEndX - cropStartX);
+      const h = Math.abs(cropEndY - cropStartY);
+
+      if (w <= 0 || h <= 0) {
+        showAlert("Invalid selection area.");
+        return;
+      }
+
+      ctx.fillStyle = blackoutColor.value;
+      ctx.fillRect(x, y, w, h);
+      
+      img.src = canvas.toDataURL();
+      hasSelection = false;
+      applyBtn.style.display = 'none';
+
+      downloadLink.href = canvas.toDataURL();
+      downloadLink.classList.add('active');
+      
+      showAlert("Area blacked out successfully!", "success");
+    }
+
+    function applyCut() {
+      const topY = Math.min(cropStartY, cropEndY);
+      const bottomY = Math.max(cropStartY, cropEndY);
+      const cutHeight = bottomY - topY;
+
+      if (cutHeight <= 0 || bottomY > img.height) {
+        showAlert("Invalid selection area.");
+        return;
+      }
+
+      const newHeight = img.height - cutHeight;
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+
+      tempCanvas.width = img.width;
+      tempCanvas.height = newHeight;
+
+      tempCtx.drawImage(img, 0, 0, img.width, topY, 0, 0, img.width, topY);
+      const remainingHeight = img.height - bottomY;
+      tempCtx.drawImage(img, 0, bottomY, img.width, remainingHeight, 0, topY, img.width, remainingHeight);
+
+      canvas.width = img.width;
+      canvas.height = newHeight;
+      canvas.style.height = `${newHeight * scaleFactor}px`;
+      
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(tempCanvas, 0, 0);
+
+      img.src = tempCanvas.toDataURL();
+      hasSelection = false;
+      applyBtn.style.display = 'none';
+
+      downloadLink.href = canvas.toDataURL();
+      downloadLink.classList.add('active');
+      
+      showAlert("Section removed successfully!", "success");
+    }
+
+    function applyCrop() {
+      if (!cropper) {
+        showAlert("Please select a crop area first!");
+        return;
+      }
+
+      const croppedCanvas = cropper.getCroppedCanvas({ imageSmoothingQuality: 'high' });
+      if (!croppedCanvas) {
+        showAlert("Please select a crop area first!");
+        return;
+      }
+
+      // Update canvas dimensions
+      canvas.width = croppedCanvas.width;
+      canvas.height = croppedCanvas.height;
+      
+      // Update display dimensions
+      const maxWidth = window.innerWidth - 40;
+      const maxHeight = window.innerHeight * 0.7;
+      scaleFactor = Math.min(
+        maxWidth / canvas.width,
+        maxHeight / canvas.height,
+        1
+      );
+      canvas.style.width = `${canvas.width * scaleFactor}px`;
+      canvas.style.height = `${canvas.height * scaleFactor}px`;
+      
+      // Draw the cropped image
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(croppedCanvas, 0, 0);
+      
+      // Update image data
+      img.src = canvas.toDataURL();
+      
+      // Enable download
+      downloadLink.href = canvas.toDataURL();
+      downloadLink.classList.add('active');
+      
+      // Destroy cropper and reset to normal mode
+      cropper.destroy();
+      cropper = null;
+      currentTool = 'cut';
+      cutBtn.click();
+      
+      showAlert("Image cropped successfully!", "success");
+    }
+
+    function applyBlur() {
+      const x = Math.min(cropStartX, cropEndX);
+      const y = Math.min(cropStartY, cropEndY);
+      const w = Math.abs(cropEndX - cropStartX);
+      const h = Math.abs(cropEndY - cropStartY);
+      const amount = parseInt(blurAmount.value);
+
+      if (w <= 0 || h <= 0) {
+        showAlert("Invalid selection area.");
+        return;
+      }
+
+      // First clear any selection overlay by redrawing the original image
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      
+      // Now apply the blur to the selected region
+      blurRegion(x, y, w, h, amount);
+      
+      // Update the image source
+      img.src = canvas.toDataURL();
+      hasSelection = false;
+      applyBtn.style.display = 'none';
+
+      downloadLink.href = canvas.toDataURL();
+      downloadLink.classList.add('active');
+      
+      showAlert("Area blurred successfully!", "success");
+    }
+
+    function blurRegion(x, y, width, height, blurAmount) {
+      // Create temporary canvas for blur operation
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCanvas.width = width;
+      tempCanvas.height = height;
+
+      // Draw selected region to temp canvas
+      tempCtx.drawImage(canvas, x, y, width, height, 0, 0, width, height);
+      
+      // Apply blur
+      tempCtx.filter = `blur(${blurAmount}px)`;
+      tempCtx.drawImage(tempCanvas, 0, 0);
+      
+      // Draw blurred region back to main canvas
+      ctx.drawImage(tempCanvas, 0, 0, width, height, x, y, width, height);
+    }
+
+    function applyPixelate() {
+      const x = Math.min(cropStartX, cropEndX);
+      const y = Math.min(cropStartY, cropEndY);
+      const w = Math.abs(cropEndX - cropStartX);
+      const h = Math.abs(cropEndY - cropStartY);
+      const pixelSize = parseInt(pixelateSize.value);
+
+      if (w <= 0 || h <= 0) {
+        showAlert("Invalid selection area.");
+        return;
+      }
+
+      // First clear any selection overlay by redrawing the original image
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      
+      // Now apply the pixelate to the selected region
+      pixelateRegion(x, y, w, h, pixelSize);
+      
+      // Update the image source
+      img.src = canvas.toDataURL();
+      hasSelection = false;
+      applyBtn.style.display = 'none';
+
+      downloadLink.href = canvas.toDataURL();
+      downloadLink.classList.add('active');
+      
+      showAlert("Area pixelated successfully!", "success");
+    }
+
+    function pixelateRegion(x, y, width, height, pixelSize) {
+      // Create temporary canvas for pixelate operation
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      
+      // Set temp canvas dimensions
+      tempCanvas.width = width;
+      tempCanvas.height = height;
+      
+      // Draw selected region to temp canvas
+      tempCtx.drawImage(canvas, x, y, width, height, 0, 0, width, height);
+      
+      // Calculate the scaled down size
+      const scaledWidth = Math.max(1, Math.floor(width / pixelSize));
+      const scaledHeight = Math.max(1, Math.floor(height / pixelSize));
+      
+      // Create another canvas for the scaled down version
+      const scaledCanvas = document.createElement('canvas');
+      const scaledCtx = scaledCanvas.getContext('2d');
+      scaledCanvas.width = scaledWidth;
+      scaledCanvas.height = scaledHeight;
+      
+      // Scale down the image
+      scaledCtx.imageSmoothingEnabled = false;
+      scaledCtx.drawImage(tempCanvas, 0, 0, scaledWidth, scaledHeight);
+      
+      // Scale back up to original size
+      tempCtx.imageSmoothingEnabled = false;
+      tempCtx.drawImage(scaledCanvas, 0, 0, scaledWidth, scaledHeight, 0, 0, width, height);
+      
+      // Draw pixelated region back to main canvas
+      ctx.drawImage(tempCanvas, 0, 0, width, height, x, y, width, height);
+    }
+
+    function showAlert(message, type = "error") {
+      const alert = document.createElement('div');
+      alert.textContent = message;
+      alert.style.position = 'fixed';
+      alert.style.bottom = '20px';
+      alert.style.left = '50%';
+      alert.style.transform = 'translateX(-50%)';
+      alert.style.padding = '12px 24px';
+      alert.style.borderRadius = '8px';
+      alert.style.fontWeight = '600';
+      alert.style.zIndex = '1000';
+      alert.style.animation = 'fadeIn 0.3s ease-out';
+      alert.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
+      
+      if (type === "error") {
+        alert.style.background = 'rgba(255, 50, 50, 0.9)';
+        alert.style.color = 'white';
+      } else {
+        alert.style.background = 'rgba(0, 255, 157, 0.9)';
+        alert.style.color = 'var(--darker)';
+      }
+      
+      document.body.appendChild(alert);
+      
+      setTimeout(() => {
+        alert.style.animation = 'fadeOut 0.3s ease-out';
+        setTimeout(() => {
+          document.body.removeChild(alert);
+        }, 300);
+      }, 3000);
+    }
+
+    // Add CSS animations
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+        to { opacity: 1; transform: translateX(-50%) translateY(0); }
+      }
+      @keyframes fadeOut {
+        from { opacity: 1; transform: translateX(-50%) translateY(0); }
+        to { opacity: 0; transform: translateX(-50%) translateY(20px); }
+      }
+    `;
+    document.head.appendChild(style);
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      if (img.width) {
+        const maxWidth = window.innerWidth - 40;
+        const maxHeight = window.innerHeight * 0.7;
+        
+        scaleFactor = Math.min(
+          maxWidth / img.width,
+          maxHeight / img.height,
+          1
+        );
+        
+        canvas.style.width = `${img.width * scaleFactor}px`;
+        canvas.style.height = `${img.height * scaleFactor}px`;
+      }
+    });
+</script>
+</body>
+</html>
