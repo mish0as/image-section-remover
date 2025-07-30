@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -797,6 +798,13 @@
         Blur
       </button>
       
+      <button id="highlightBtn" class="tool-button">
+        <svg class="tool-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.47-7-7.43 0-4.07 3.06-7.44 7-7.93v15.36zm2 0V4.07c3.94.49 7 3.47 7 7.93s-3.05 7.44-7 7.93z"/>
+        </svg>
+        Highlight
+      </button>
+      
       <button id="pixelateBtn" class="tool-button">
         <svg class="tool-icon" viewBox="0 0 24 24" fill="currentColor">
           <path d="M10 4H4v6h6V4zm0 10H4v6h6v-6zm10 0h-6v6h6v-6zm0-10h-6v6h6V4z"/>
@@ -875,6 +883,13 @@
       </div>
     </div>
     
+    <div class="tool-options" id="highlightOptions">
+      <div class="option-group">
+        <label class="option-label" for="highlightColor">Color:</label>
+        <input type="color" id="highlightColor" class="option-input" value="#FFFF00">
+      </div>
+    </div>
+    
     <section class="canvas-section">
       <div class="instructions" id="instructions">
         Select a tool and upload an image to get started
@@ -933,6 +948,7 @@
       draw: document.getElementById("drawBtn"),
       rotate: document.getElementById("rotateBtn"),
       crop: document.getElementById("cropBtn"),
+      highlight: document.getElementById("highlightBtn"),
     };
     
     // Tool options
@@ -942,6 +958,7 @@
       pixelate: document.getElementById("pixelateOptions"),
       draw: document.getElementById("drawOptions"),
       crop: document.getElementById("cropOptions"),
+      highlight: document.getElementById("highlightOptions"),
     };
     
     // Option controls
@@ -955,6 +972,7 @@
       brushSize: document.getElementById("brushSize"),
       brushSizeValue: document.getElementById("brushSizeValue"),
       aspectRatio: document.getElementById("aspectRatio"),
+      highlightColor: document.getElementById("highlightColor"),
     };
     
     // State variables
@@ -1049,6 +1067,10 @@
           const val = eval(controls.aspectRatio.value);
           cropper.setAspectRatio(val);
         }
+      });
+      
+      controls.highlightColor.addEventListener("input", () => {
+        // No specific action needed here, color is read directly when applying
       });
       
       // Window resize
@@ -1179,6 +1201,7 @@
         draw: "Click and drag to draw on the image",
         rotate: "Click the rotate button to rotate the image 90 degrees",
         crop: "Drag the corners to select the area you want to crop",
+        highlight: "Drag to select the area you want to highlight",
       };
       
       if (!img.src) {
@@ -1322,7 +1345,9 @@
       drawSelection();
     }
 
-    function handleTouchEnd() {
+    function handleTouchEnd(e) {
+      e.preventDefault(); // Prevent scrolling and zooming
+      
       if (currentTool === "draw") {
         if (isDrawing) {
           isDrawing = false;
@@ -1343,7 +1368,8 @@
       }
     }
 
-    function handleTouchCancel() {
+    function handleTouchCancel(e) {
+      e.preventDefault(); // Prevent scrolling and zooming
       isDragging = false;
       isDrawing = false;
     }
@@ -1353,8 +1379,6 @@
       // Redraw original image
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(img, 0, 0);
-      
-      if (!isDragging && !hasSelection) return;
       
       const x = Math.min(startX, endX);
       const y = Math.min(startY, endY);
@@ -1378,6 +1402,7 @@
         blackout: "rgba(0, 255, 157, 0.2)",
         blur: "rgba(99, 102, 241, 0.2)",
         pixelate: "rgba(245, 158, 11, 0.2)",
+        highlight: "rgba(255, 255, 0, 0.2)",
       };
       return colors[currentTool] || "rgba(255, 255, 255, 0.2)";
     }
@@ -1389,6 +1414,7 @@
         blackout: controls.blackoutColor.value,
         blur: "#6366f1",
         pixelate: "#f59e0b",
+        highlight: "#FFFF00",
       };
       return colors[currentTool] || "#ffffff";
     }
@@ -1418,6 +1444,9 @@
         case "crop":
           applyCrop();
           break;
+        case "highlight":
+          applyHighlight();
+          break;
       }
       
       hasSelection = false;
@@ -1425,39 +1454,32 @@
       updateDownloadLink();
     }
     
-    // Apply cut effect
+    // Apply cut effect (remove and join)
     function applyCut() {
-      const topY = Math.min(startY, endY);
-      const bottomY = Math.max(startY, endY);
-      const cutHeight = bottomY - topY;
+      const y = Math.min(startY, endY);
+      const h = Math.abs(endY - startY);
       
-      if (cutHeight <= 0) {
-        showNotification("Invalid selection area", "error");
-        return;
-      }
-      
-      const newHeight = canvas.height - cutHeight;
+      // Create new canvas for the result
+      const newHeight = canvas.height - h;
       const tempCanvas = document.createElement("canvas");
       const tempCtx = tempCanvas.getContext("2d");
-      
       tempCanvas.width = canvas.width;
       tempCanvas.height = newHeight;
       
       // Draw top part
-      tempCtx.drawImage(canvas, 0, 0, canvas.width, topY, 0, 0, canvas.width, topY);
+      tempCtx.drawImage(canvas, 0, 0, canvas.width, y, 0, 0, canvas.width, y);
       
-      // Draw bottom part
-      const remainingHeight = canvas.height - bottomY;
+      // Draw bottom part (joined to top)
       tempCtx.drawImage(
         canvas,
         0,
-        bottomY,
+        y + h,
         canvas.width,
-        remainingHeight,
+        canvas.height - (y + h),
         0,
-        topY,
+        y,
         canvas.width,
-        remainingHeight
+        canvas.height - (y + h)
       );
       
       // Update canvas
@@ -1467,7 +1489,7 @@
       ctx.drawImage(tempCanvas, 0, 0);
       
       img.src = canvas.toDataURL();
-      showNotification("Section removed successfully!", "success");
+      showNotification("Area removed and joined successfully!", "success");
     }
     
     // Apply blackout effect
@@ -1520,6 +1542,26 @@
       
       img.src = canvas.toDataURL();
       showNotification("Area pixelated successfully!", "success");
+    }
+    
+    // Apply highlight effect
+    function applyHighlight() {
+      const x = Math.min(startX, endX);
+      const y = Math.min(startY, endY);
+      const w = Math.abs(endX - startX);
+      const h = Math.abs(endY - startY);
+      
+      // Redraw original first
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      
+      ctx.fillStyle = controls.highlightColor.value;
+      ctx.globalAlpha = 0.5; // Semi-transparent highlight
+      ctx.fillRect(x, y, w, h);
+      ctx.globalAlpha = 1; // Reset alpha
+      
+      img.src = canvas.toDataURL();
+      showNotification("Area highlighted successfully!", "success");
     }
     
     // Blur region implementation
@@ -1580,12 +1622,14 @@
       }
       
       saveState();
+      
       rotationAngle = (rotationAngle + 90) % 360;
       
       const tempCanvas = document.createElement("canvas");
       const tempCtx = tempCanvas.getContext("2d");
       
-      if (rotationAngle % 180 === 90) {
+      // Swap dimensions for 90/270 degree rotations
+      if (rotationAngle === 90 || rotationAngle === 270) {
         tempCanvas.width = canvas.height;
         tempCanvas.height = canvas.width;
       } else {
@@ -1593,105 +1637,47 @@
         tempCanvas.height = canvas.height;
       }
       
-      tempCtx.save();
+      // Set up rotation
       tempCtx.translate(tempCanvas.width / 2, tempCanvas.height / 2);
-      tempCtx.rotate((90 * Math.PI) / 180);
+      tempCtx.rotate((rotationAngle * Math.PI) / 180);
       tempCtx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2);
-      tempCtx.restore();
       
+      // Update canvas
       canvas.width = tempCanvas.width;
       canvas.height = tempCanvas.height;
-      
-      const maxWidth = Math.min(window.innerWidth - 80, 800);
-      const maxHeight = window.innerHeight * 0.6;
-      scaleFactor = Math.min(
-        maxWidth / canvas.width,
-        maxHeight / canvas.height,
-        1
-      );
-      
-      canvas.style.width = `${canvas.width * scaleFactor}px`;
-      canvas.style.height = `${canvas.height * scaleFactor}px`;
+      canvas.style.width = `${tempCanvas.width * scaleFactor}px`;
+      canvas.style.height = `${tempCanvas.height * scaleFactor}px`;
       
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(tempCanvas, 0, 0);
       
       img.src = canvas.toDataURL();
       updateDownloadLink();
-      
       showNotification("Image rotated successfully!", "success");
     }
     
     // Initialize cropper
     function initializeCropper() {
+      if (cropper) {
+        cropper.destroy();
+      }
+      
       if (!img.src) return;
       
-      destroyCropper();
-      
-      canvas.style.width = "auto";
-      canvas.style.height = "auto";
-      
       cropper = new Cropper(canvas, {
+        aspectRatio: eval(controls.aspectRatio.value),
         viewMode: 1,
+        dragMode: "crop",
+        autoCropArea: 0.8,
         responsive: true,
-        background: false,
-        zoomable: false,
-        movable: false,
-        rotatable: false,
-        scalable: false,
+        restore: false,
+        guides: true,
+        center: true,
+        highlight: true,
         cropBoxMovable: true,
         cropBoxResizable: true,
-        autoCrop: false,
-        guides: true,
-        highlight: true,
-        dragMode: "crop",
+        toggleDragModeOnDblclick: false,
       });
-      
-      const val = eval(controls.aspectRatio.value);
-      cropper.setAspectRatio(val);
-    }
-    
-    // Apply crop
-    function applyCrop() {
-      if (!cropper) {
-        showNotification("Please select a crop area first!", "error");
-        return;
-      }
-      
-      const croppedCanvas = cropper.getCroppedCanvas({
-        imageSmoothingQuality: "high",
-      });
-      if (!croppedCanvas) {
-        showNotification("Please select a crop area first!", "error");
-        return;
-      }
-      
-      saveState();
-      
-      canvas.width = croppedCanvas.width;
-      canvas.height = croppedCanvas.height;
-      
-      const maxWidth = Math.min(window.innerWidth - 80, 800);
-      const maxHeight = window.innerHeight * 0.6;
-      scaleFactor = Math.min(
-        maxWidth / canvas.width,
-        maxHeight / canvas.height,
-        1
-      );
-      
-      canvas.style.width = `${canvas.width * scaleFactor}px`;
-      canvas.style.height = `${canvas.height * scaleFactor}px`;
-      
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(croppedCanvas, 0, 0);
-      
-      img.src = canvas.toDataURL();
-      
-      destroyCropper();
-      selectTool("cut");
-      updateDownloadLink();
-      
-      showNotification("Image cropped successfully!", "success");
     }
     
     // Destroy cropper
@@ -1699,62 +1685,63 @@
       if (cropper) {
         cropper.destroy();
         cropper = null;
-        
-        // Restore canvas styling
-        if (img.src) {
-          canvas.style.width = `${canvas.width * scaleFactor}px`;
-          canvas.style.height = `${canvas.height * scaleFactor}px`;
-        }
       }
+    }
+    
+    // Apply crop
+    function applyCrop() {
+      if (!cropper) return;
+      
+      saveState();
+      
+      const croppedCanvas = cropper.getCroppedCanvas();
+      
+      canvas.width = croppedCanvas.width;
+      canvas.height = croppedCanvas.height;
+      canvas.style.width = `${croppedCanvas.width * scaleFactor}px`;
+      canvas.style.height = `${croppedCanvas.height * scaleFactor}px`;
+      
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(croppedCanvas, 0, 0);
+      
+      img.src = canvas.toDataURL();
+      destroyCropper();
+      updateDownloadLink();
+      showNotification("Image cropped successfully!", "success");
     }
     
     // Save state for undo
     function saveState() {
-      if (undoStack.length >= maxUndoSteps) {
+      undoStack.push(canvas.toDataURL());
+      if (undoStack.length > maxUndoSteps) {
         undoStack.shift();
       }
-      undoStack.push({
-        imageData: canvas.toDataURL(),
-        width: canvas.width,
-        height: canvas.height,
-      });
     }
     
     // Undo last action
     function undo() {
-      if (undoStack.length === 0) {
+      if (undoStack.length > 1) {
+        undoStack.pop(); // Remove current state
+        const previousState = undoStack[undoStack.length - 1];
+        
+        const tempImg = new Image();
+        tempImg.onload = () => {
+          canvas.width = tempImg.width;
+          canvas.height = tempImg.height;
+          canvas.style.width = `${tempImg.width * scaleFactor}px`;
+          canvas.style.height = `${tempImg.height * scaleFactor}px`;
+          
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(tempImg, 0, 0);
+          
+          img.src = previousState;
+          updateDownloadLink();
+          showNotification("Action undone!", "success");
+        };
+        tempImg.src = previousState;
+      } else {
         showNotification("Nothing to undo!", "error");
-        return;
       }
-      
-      const state = undoStack.pop();
-      
-      const tempImg = new Image();
-      tempImg.onload = () => {
-        canvas.width = state.width;
-        canvas.height = state.height;
-        
-        const maxWidth = Math.min(window.innerWidth - 80, 800);
-        const maxHeight = window.innerHeight * 0.6;
-        scaleFactor = Math.min(
-          maxWidth / canvas.width,
-          maxHeight / canvas.height,
-          1
-        );
-        
-        canvas.style.width = `${canvas.width * scaleFactor}px`;
-        canvas.style.height = `${canvas.height * scaleFactor}px`;
-        
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(tempImg, 0, 0);
-        
-        img.src = state.imageData;
-        updateDownloadLink();
-        
-        showNotification("Action undone!", "success");
-      };
-      
-      tempImg.src = state.imageData;
     }
     
     // Update download link
@@ -1769,23 +1756,27 @@
     
     // Handle window resize
     function handleResize() {
-      if (img.src) {
-        const maxWidth = Math.min(window.innerWidth - 80, 800);
-        const maxHeight = window.innerHeight * 0.6;
-        
-        scaleFactor = Math.min(
-          maxWidth / canvas.width,
-          maxHeight / canvas.height,
-          1
-        );
-        
-        canvas.style.width = `${canvas.width * scaleFactor}px`;
-        canvas.style.height = `${canvas.height * scaleFactor}px`;
-      }
+      if (!img.src) return;
+      
+      const maxWidth = Math.min(window.innerWidth - 80, 800);
+      const maxHeight = window.innerHeight * 0.6;
+      
+      scaleFactor = Math.min(
+        maxWidth / canvas.width,
+        maxHeight / canvas.height,
+        1
+      );
+      
+      canvas.style.width = `${canvas.width * scaleFactor}px`;
+      canvas.style.height = `${canvas.height * scaleFactor}px`;
     }
     
     // Show notification
     function showNotification(message, type = "success") {
+      // Remove existing notifications
+      const existingNotifications = document.querySelectorAll(".notification");
+      existingNotifications.forEach((notification) => notification.remove());
+      
       const notification = document.createElement("div");
       notification.className = `notification ${type}`;
       notification.textContent = message;
@@ -1793,17 +1784,12 @@
       document.body.appendChild(notification);
       
       setTimeout(() => {
-        notification.style.animation = "slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) reverse";
-        setTimeout(() => {
-          if (document.body.contains(notification)) {
-            document.body.removeChild(notification);
-          }
-        }, 400);
+        notification.remove();
       }, 3000);
     }
     
-    // Initialize the application
-    init();
+    // Initialize the application when DOM is loaded
+    document.addEventListener("DOMContentLoaded", init);
 </script>
 </body>
 </html>
