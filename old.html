@@ -1,0 +1,1810 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CutMask Pro - Advanced Image Editor</title>
+  <link href="https://cdn.jsdelivr.net/npm/cropperjs@1.5.13/dist/cropper.min.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Modern 2025 Color Palette - Mocha Mousse inspired */
+      --primary: #00ff9d;
+      --primary-dark: #00cc7a;
+      --secondary: #6366f1;
+      --secondary-dark: #4f46e5;
+      --accent: #f59e0b;
+      --accent-dark: #d97706;
+      --danger: #ef4444;
+      --danger-dark: #dc2626;
+      --success: #10b981;
+      --warning: #f59e0b;
+      
+      /* Sophisticated neutral palette */
+      --bg-primary: #0a0a0a;
+      --bg-secondary: #1a1a1a;
+      --bg-tertiary: #2a2a2a;
+      --bg-glass: rgba(255, 255, 255, 0.03);
+      --bg-glass-hover: rgba(255, 255, 255, 0.08);
+      
+      --text-primary: #ffffff;
+      --text-secondary: rgba(255, 255, 255, 0.8);
+      --text-muted: rgba(255, 255, 255, 0.6);
+      --text-disabled: rgba(255, 255, 255, 0.4);
+      
+      --border-primary: rgba(255, 255, 255, 0.1);
+      --border-secondary: rgba(255, 255, 255, 0.05);
+      --border-accent: rgba(0, 255, 157, 0.3);
+      
+      /* Advanced shadows and effects */
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
+      --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.2);
+      --shadow-lg: 0 16px 64px rgba(0, 0, 0, 0.3);
+      --shadow-glow: 0 0 32px rgba(0, 255, 157, 0.2);
+      --shadow-glow-hover: 0 0 48px rgba(0, 255, 157, 0.3);
+      
+      /* Spacing system */
+      --space-xs: 0.25rem;
+      --space-sm: 0.5rem;
+      --space-md: 1rem;
+      --space-lg: 1.5rem;
+      --space-xl: 2rem;
+      --space-2xl: 3rem;
+      
+      /* Border radius system */
+      --radius-sm: 6px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 24px;
+      --radius-full: 9999px;
+      
+      /* Typography scale */
+      --text-xs: 0.75rem;
+      --text-sm: 0.875rem;
+      --text-base: 1rem;
+      --text-lg: 1.125rem;
+      --text-xl: 1.25rem;
+      --text-2xl: 1.5rem;
+      --text-3xl: 1.875rem;
+      --text-4xl: 2.25rem;
+      --text-5xl: 3rem;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    /* Animated background elements */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: 
+        radial-gradient(circle at 25% 25%, rgba(0, 255, 157, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 75% 75%, rgba(0, 184, 255, 0.1) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: -1;
+      animation: backgroundShift 20s ease-in-out infinite;
+    }
+    
+    @keyframes backgroundShift {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.05); }
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: var(--space-xl);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2xl);
+      flex-grow: 1;
+    }
+    
+    /* Header with modern typography */
+    .header {
+      text-align: center;
+      position: relative;
+      padding: var(--space-2xl) 0;
+    }
+    
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 120px;
+      height: 4px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      border-radius: var(--radius-full);
+      box-shadow: var(--shadow-glow);
+    }
+    
+    .main-title {
+      font-size: clamp(var(--text-3xl), 5vw, var(--text-5xl));
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      margin-bottom: var(--space-md);
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      position: relative;
+      animation: titleGlow 3s ease-in-out infinite;
+    }
+    
+    @keyframes titleGlow {
+      0%, 100% { filter: drop-shadow(0 0 20px rgba(0, 255, 157, 0.3)); }
+      50% { filter: drop-shadow(0 0 30px rgba(0, 255, 157, 0.5)); }
+    }
+    
+    .subtitle {
+      font-size: var(--text-lg);
+      color: var(--text-secondary);
+      font-weight: 400;
+      max-width: 600px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+    
+    /* Upload area with glassmorphism */
+    .upload-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-lg);
+    }
+    
+    .file-input {
+      display: none;
+    }
+    
+    .drop-zone {
+      position: relative;
+      width: 100%;
+      max-width: 350px;
+      height: 200px;
+      border: 2px dashed var(--border-primary);
+      border-radius: var(--radius-xl);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-2xl);
+      text-align: center;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      background: var(--bg-glass);
+      backdrop-filter: blur(20px);
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+    }
+    
+    .drop-zone::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(0, 255, 157, 0.1), rgba(99, 102, 241, 0.1));
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      border-radius: var(--radius-xl);
+    }
+    
+    .drop-zone:hover::before,
+    .drop-zone.drag-over::before {
+      opacity: 1;
+    }
+    
+    .drop-zone:hover {
+      border-color: var(--border-accent);
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg), var(--shadow-glow);
+    }
+    
+    .drop-zone.drag-over {
+      border-color: var(--primary);
+      background: rgba(0, 255, 157, 0.05);
+      transform: scale(1.02);
+    }
+    
+    .upload-icon {
+      width: 64px;
+      height: 64px;
+      margin-bottom: var(--space-md);
+      opacity: 0.8;
+      transition: all 0.3s ease;
+    }
+    
+    .drop-zone:hover .upload-icon {
+      opacity: 1;
+      transform: scale(1.1);
+    }
+    
+    .drop-title {
+      font-size: var(--text-xl);
+      font-weight: 600;
+      margin-bottom: var(--space-sm);
+      color: var(--text-primary);
+    }
+    
+    .drop-subtitle {
+      font-size: var(--text-sm);
+      color: var(--text-muted);
+      margin-bottom: var(--space-lg);
+      line-height: 1.5;
+    }
+    
+    .upload-button {
+      padding: var(--space-md) var(--space-xl);
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: var(--bg-primary);
+      border: none;
+      border-radius: var(--radius-full);
+      font-weight: 600;
+      font-size: var(--text-sm);
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      box-shadow: var(--shadow-sm);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .upload-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s ease;
+    }
+    
+    .upload-button:hover::before {
+      left: 100%;
+    }
+    
+    .upload-button:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md), var(--shadow-glow);
+    }
+    
+    .upload-button:active {
+      transform: translateY(0);
+    }
+    
+    /* Tool panel with modern card design */
+    .tools-panel {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-md);
+      justify-content: center;
+      padding: var(--space-xl);
+      background: var(--bg-glass);
+      backdrop-filter: blur(20px);
+      border-radius: var(--radius-xl);
+      border: 1px solid var(--border-primary);
+      box-shadow: var(--shadow-md);
+    }
+    
+    .tool-button {
+      padding: var(--space-md) var(--space-lg);
+      border: 1px solid var(--border-primary);
+      border-radius: var(--radius-md);
+      font-weight: 600;
+      font-size: var(--text-sm);
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      position: relative;
+      background: var(--bg-glass);
+      color: var(--text-secondary);
+      backdrop-filter: blur(10px);
+      min-width: 120px;
+      justify-content: center;
+    }
+    
+    .tool-button::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      border-radius: var(--radius-md);
+      z-index: -1;
+    }
+    
+    .tool-button:hover {
+      transform: translateY(-2px);
+      border-color: var(--border-accent);
+      color: var(--text-primary);
+      box-shadow: var(--shadow-md);
+    }
+    
+    .tool-button.active {
+      color: var(--bg-primary);
+      border-color: var(--primary);
+      box-shadow: var(--shadow-glow);
+    }
+    
+    .tool-button.active::before {
+      opacity: 1;
+    }
+    
+    .tool-icon {
+      width: 18px;
+      height: 18px;
+      transition: transform 0.3s ease;
+    }
+    
+    .tool-button:hover .tool-icon {
+      transform: scale(1.1);
+    }
+    
+    /* Tool options with modern form styling */
+    .tool-options {
+      display: none;
+      align-items: center;
+      gap: var(--space-lg);
+      padding: var(--space-lg);
+      background: var(--bg-glass);
+      backdrop-filter: blur(20px);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-primary);
+      margin-top: var(--space-md);
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    
+    .tool-options.active {
+      display: flex;
+    }
+    
+    .option-group {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+    
+    .option-label {
+      font-size: var(--text-sm);
+      color: var(--text-secondary);
+      font-weight: 500;
+      min-width: 80px;
+    }
+    
+    .option-input {
+      padding: var(--space-sm) var(--space-md);
+      border: 1px solid var(--border-primary);
+      border-radius: var(--radius-sm);
+      background: var(--bg-glass);
+      color: var(--text-primary);
+      font-size: var(--text-sm);
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+    }
+    
+    .option-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0, 255, 157, 0.1);
+    }
+    
+    .option-input[type="range"] {
+      width: 120px;
+      height: 6px;
+      -webkit-appearance: none;
+      background: var(--bg-tertiary);
+      border-radius: var(--radius-full);
+      outline: none;
+    }
+    
+    .option-input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.3s ease;
+    }
+    
+    .option-input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+      box-shadow: var(--shadow-glow);
+    }
+    
+    .option-input[type="color"] {
+      width: 50px;
+      height: 40px;
+      padding: 4px;
+      cursor: pointer;
+    }
+    
+    .option-value {
+      font-size: var(--text-sm);
+      color: var(--text-primary);
+      font-weight: 600;
+      min-width: 30px;
+      text-align: center;
+    }
+    
+    /* Canvas container with modern styling */
+    .canvas-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-lg);
+    }
+    
+    .canvas-container {
+      position: relative;
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border-primary);
+      background: var(--bg-glass);
+      backdrop-filter: blur(20px);
+      max-width: 100%;
+      max-height: 70vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 200px;
+    }
+    
+    .canvas-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(45deg, 
+        rgba(0, 255, 157, 0.05) 0%, 
+        rgba(99, 102, 241, 0.05) 50%, 
+        rgba(245, 158, 11, 0.05) 100%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+    
+    .canvas-container:hover::before {
+      opacity: 1;
+    }
+    
+    #canvas {
+      display: block;
+      max-width: 100%;
+      max-height: 70vh;
+      object-fit: contain;
+      cursor: crosshair;
+      transition: all 0.3s ease;
+      border-radius: var(--radius-lg);
+    }
+    
+    #canvas:hover {
+      filter: brightness(1.05);
+    }
+    
+    .instructions {
+      color: var(--text-muted);
+      font-size: var(--text-sm);
+      text-align: center;
+      padding: var(--space-md);
+      background: var(--bg-glass);
+      backdrop-filter: blur(10px);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-secondary);
+      max-width: 500px;
+      line-height: 1.5;
+    }
+    
+    /* Action buttons */
+    .action-buttons {
+      display: flex;
+      gap: var(--space-md);
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    
+    .action-button {
+      padding: var(--space-md) var(--space-xl);
+      border: none;
+      border-radius: var(--radius-full);
+      font-weight: 600;
+      font-size: var(--text-sm);
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      position: relative;
+      overflow: hidden;
+      min-width: 140px;
+      justify-content: center;
+    }
+    
+    .action-button.primary {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: var(--bg-primary);
+      box-shadow: var(--shadow-sm);
+    }
+    
+    .action-button.primary:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md), var(--shadow-glow);
+    }
+    
+    .action-button.secondary {
+      background: var(--bg-glass);
+      color: var(--text-primary);
+      border: 1px solid var(--border-primary);
+      backdrop-filter: blur(10px);
+    }
+    
+    .action-button.secondary:hover {
+      background: var(--bg-glass-hover);
+      border-color: var(--border-accent);
+      transform: translateY(-2px);
+    }
+    
+    .action-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+    
+    .download-link {
+      padding: var(--space-md) var(--space-xl);
+      background: linear-gradient(135deg, var(--secondary), var(--secondary-dark));
+      color: var(--text-primary);
+      text-decoration: none;
+      border-radius: var(--radius-full);
+      font-weight: 600;
+      font-size: var(--text-sm);
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: var(--shadow-sm);
+      opacity: 0.5;
+      pointer-events: none;
+      min-width: 160px;
+      justify-content: center;
+    }
+    
+    .download-link.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    
+    .download-link:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md), 0 0 32px rgba(99, 102, 241, 0.3);
+    }
+    
+    /* Notification system */
+    .notification {
+      position: fixed;
+      bottom: var(--space-xl);
+      left: 50%;
+      transform: translateX(-50%);
+      padding: var(--space-md) var(--space-xl);
+      border-radius: var(--radius-full);
+      font-weight: 600;
+      font-size: var(--text-sm);
+      z-index: 1000;
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border-primary);
+      box-shadow: var(--shadow-lg);
+      animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      max-width: 400px;
+      text-align: center;
+    }
+    
+    .notification.success {
+      background: rgba(16, 185, 129, 0.9);
+      color: var(--text-primary);
+      border-color: var(--success);
+    }
+    
+    .notification.error {
+      background: rgba(239, 68, 68, 0.9);
+      color: var(--text-primary);
+      border-color: var(--danger);
+    }
+    
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+    }
+    
+    /* Responsive design */
+    @media (max-width: 768px) {
+      .container {
+        padding: var(--space-md);
+        gap: var(--space-lg);
+      }
+      
+      .tools-panel {
+        padding: var(--space-md);
+      }
+      
+      .tool-button {
+        min-width: 100px;
+        padding: var(--space-sm) var(--space-md);
+      }
+      
+      .tool-options {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .option-group {
+        justify-content: space-between;
+      }
+      
+      .action-buttons {
+        flex-direction: column;
+        width: 100%;
+      }
+      
+      .action-button,
+      .download-link {
+        width: 100%;
+      }
+      
+      .drop-zone {
+        max-width: 100%;
+        height: 200px;
+        padding: var(--space-lg);
+      }
+    }
+    
+    /* Loading states */
+    .loading {
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .loading::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(0, 255, 157, 0.2), transparent);
+      animation: shimmer 1.5s infinite;
+    }
+    
+    @keyframes shimmer {
+      0% { left: -100%; }
+      100% { left: 100%; }
+    }
+    
+    /* Micro-interactions */
+    .tool-button:active {
+      transform: scale(0.98);
+    }
+    
+    .action-button:active {
+      transform: scale(0.98);
+    }
+    
+    /* Accessibility improvements */
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+    
+    /* Focus styles for keyboard navigation */
+    .tool-button:focus,
+    .action-button:focus,
+    .upload-button:focus {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1 class="main-title">CutMask Pro</h1>
+      <p class="subtitle">Advanced Image Editor with Professional Tools</p>
+    </header>
+    
+    <section class="upload-section">
+      <input type="file" id="upload" class="file-input" accept="image/*">
+      <div class="drop-zone" id="dropZone">
+        <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        <h3 class="drop-title">Drop your image here</h3>
+        <p class="drop-subtitle">or click the button below<br>Supports JPG, PNG, WebP</p>
+        <button class="upload-button" id="selectImageBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+          </svg>
+          Select Image
+        </button>
+      </div>
+    </section>
+    
+    <section class="tools-panel">
+      <button id="cutBtn" class="tool-button active">
+        <svg class="tool-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M9.64 7.64c.23-.5.36-1.05.36-1.64 0-2.21-1.79-4-4-4S2 3.79 2 6s1.79 4 4 4c.59 0 1.14-.13 1.64-.36L10 12l-2.36 2.36C7.14 14.13 6.59 14 6 14c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4c0-.59-.13-1.14-.36-1.64L12 14l7 7h3v-1L9.64 7.64zM6 8c-1.1 0-2-.89-2-2s.9-2 2-2 2 .89 2 2-.9 2-2 2zm0 12c-1.1 0-2-.89-2-2s.9-2 2-2 2 .89 2 2-.9 2-2 2zm6-7.5c-.28 0-.5-.22-.5-.5s.22-.5.5-.5.5.22.5.5-.22.5-.5.5zM19 3l-6 6 2 2 7-7V3z"/>
+        </svg>
+        Remove & Join
+      </button>
+      
+      <button id="blackoutBtn" class="tool-button">
+        <svg class="tool-icon" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="12" cy="12" r="10"/>
+        </svg>
+        Black-out
+      </button>
+      
+      <button id="blurBtn" class="tool-button">
+        <svg class="tool-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M6 14c-.55 0-1 .45-1 1v3c0 .55.45 1 1 1h3c.55 0 1-.45 1-1s-.45-1-1-1H7v-2c0-.55-.45-1-1-1zm0-4c.55 0 1-.45 1-1V7h2c.55 0 1-.45 1-1s-.45-1-1-1H6c-.55 0-1 .45-1 1v3c0 .55.45 1 1 1zm11 7h-2c-.55 0-1 .45-1 1s.45 1 1 1h3c.55 0 1-.45 1-1v-3c0-.55-.45-1-1-1s-1 .45-1 1v2zM14 6c0 .55.45 1 1 1h2v2c0 .55.45 1 1 1s1-.45 1-1V6c0-.55-.45-1-1-1h-3c-.55 0-1 .45-1 1z"/>
+        </svg>
+        Blur
+      </button>
+      
+      <button id="pixelateBtn" class="tool-button">
+        <svg class="tool-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M10 4H4v6h6V4zm0 10H4v6h6v-6zm10 0h-6v6h6v-6zm0-10h-6v6h6V4z"/>
+        </svg>
+        Pixelate
+      </button>
+      
+      <button id="drawBtn" class="tool-button">
+        <svg class="tool-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25z"/>
+        </svg>
+        Draw
+      </button>
+      
+      <button id="rotateBtn" class="tool-button">
+        <svg class="tool-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L6.7 14.8c-.45-.83-.7-1.79-.7-2.8 0-3.31 2.69-6 6-6zm6.76 1.74L17.3 9.2c.44.84.7 1.79.7 2.8 0 3.31-2.69 6-6 6v-3l-4 4 4 4v-3c4.42 0 8-3.58 8-8 0-1.57-.46-3.03-1.24-4.26z"/>
+        </svg>
+        Rotate
+      </button>
+      
+      <button id="cropBtn" class="tool-button">
+        <svg class="tool-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M17 15h2V7c0-1.1-.9-2-2-2H9v2h8v8zM7 17V1H5v4H1v2h4v10c0 1.1.9 2 2 2h10v4h2v-4h4v-2H7z"/>
+        </svg>
+        Crop
+      </button>
+    </section>
+    
+    <!-- Tool Options -->
+    <div class="tool-options" id="blackoutOptions">
+      <div class="option-group">
+        <label class="option-label" for="blackoutColor">Color:</label>
+        <input type="color" id="blackoutColor" class="option-input" value="#000000">
+      </div>
+    </div>
+    
+    <div class="tool-options" id="blurOptions">
+      <div class="option-group">
+        <label class="option-label" for="blurAmount">Blur:</label>
+        <input type="range" id="blurAmount" class="option-input" min="1" max="50" value="10">
+        <span class="option-value" id="blurAmountValue">10</span>
+      </div>
+    </div>
+    
+    <div class="tool-options" id="pixelateOptions">
+      <div class="option-group">
+        <label class="option-label" for="pixelateSize">Pixel Size:</label>
+        <input type="range" id="pixelateSize" class="option-input" min="2" max="50" value="10">
+        <span class="option-value" id="pixelateSizeValue">10</span>
+      </div>
+    </div>
+    
+    <div class="tool-options" id="drawOptions">
+      <div class="option-group">
+        <label class="option-label" for="drawColor">Color:</label>
+        <input type="color" id="drawColor" class="option-input" value="#ff0000">
+      </div>
+      <div class="option-group">
+        <label class="option-label" for="brushSize">Brush:</label>
+        <input type="range" id="brushSize" class="option-input" min="1" max="50" value="5">
+        <span class="option-value" id="brushSizeValue">5</span>
+      </div>
+    </div>
+    
+    <div class="tool-options" id="cropOptions">
+      <div class="option-group">
+        <label class="option-label" for="aspectRatio">Aspect:</label>
+        <select id="aspectRatio" class="option-input">
+          <option value="NaN">Free</option>
+          <option value="1">1:1</option>
+          <option value="4/3">4:3</option>
+          <option value="16/9">16:9</option>
+          <option value="3/4">3:4</option>
+        </select>
+      </div>
+    </div>
+    
+    <section class="canvas-section">
+      <div class="instructions" id="instructions">
+        Select a tool and upload an image to get started
+      </div>
+      
+      <div class="canvas-container">
+        <canvas id="canvas"></canvas>
+      </div>
+      
+      <div class="action-buttons">
+        <button id="applyBtn" class="action-button primary" style="display: none;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+          </svg>
+          Apply Changes
+        </button>
+        
+        <button id="undoBtn" class="action-button secondary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 7v6h6"/>
+            <path d="m21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"/>
+          </svg>
+          Undo
+        </button>
+        
+        <a id="downloadLink" class="download-link" download="edited-image.png">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 9h-4V3H9v6H5l7 7 7-7z"/>
+            <path d="M5 18v2h14v-2"/>
+          </svg>
+          Download Image
+        </a>
+      </div>
+    </section>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/cropperjs@1.5.13/dist/cropper.min.js"></script>
+<script>
+    // DOM Elements
+    const upload = document.getElementById("upload");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const dropZone = document.getElementById("dropZone");
+    const selectImageBtn = document.getElementById("selectImageBtn");
+    const instructions = document.getElementById("instructions");
+    const downloadLink = document.getElementById("downloadLink");
+    const applyBtn = document.getElementById("applyBtn");
+    const undoBtn = document.getElementById("undoBtn");
+    
+    // Tool buttons
+    const toolButtons = {
+      cut: document.getElementById("cutBtn"),
+      blackout: document.getElementById("blackoutBtn"),
+      blur: document.getElementById("blurBtn"),
+      pixelate: document.getElementById("pixelateBtn"),
+      draw: document.getElementById("drawBtn"),
+      rotate: document.getElementById("rotateBtn"),
+      crop: document.getElementById("cropBtn"),
+    };
+    
+    // Tool options
+    const toolOptions = {
+      blackout: document.getElementById("blackoutOptions"),
+      blur: document.getElementById("blurOptions"),
+      pixelate: document.getElementById("pixelateOptions"),
+      draw: document.getElementById("drawOptions"),
+      crop: document.getElementById("cropOptions"),
+    };
+    
+    // Option controls
+    const controls = {
+      blackoutColor: document.getElementById("blackoutColor"),
+      blurAmount: document.getElementById("blurAmount"),
+      blurAmountValue: document.getElementById("blurAmountValue"),
+      pixelateSize: document.getElementById("pixelateSize"),
+      pixelateSizeValue: document.getElementById("pixelateSizeValue"),
+      drawColor: document.getElementById("drawColor"),
+      brushSize: document.getElementById("brushSize"),
+      brushSizeValue: document.getElementById("brushSizeValue"),
+      aspectRatio: document.getElementById("aspectRatio"),
+    };
+    
+    // State variables
+    let img = new Image();
+    let originalImage = null;
+    let currentTool = "cut";
+    let isDragging = false;
+    let isDrawing = false;
+    let hasSelection = false;
+    let scaleFactor = 1;
+    let rotationAngle = 0;
+    let cropper = null;
+    let undoStack = [];
+    let maxUndoSteps = 10;
+    
+    // Selection coordinates
+    let startX = 0, startY = 0, endX = 0, endY = 0;
+    let lastX = 0, lastY = 0;
+    
+    // Initialize the application
+    function init() {
+      setupEventListeners();
+      selectTool("cut");
+      updateInstructions();
+    }
+    
+    // Setup all event listeners
+    function setupEventListeners() {
+      // File upload
+      upload.addEventListener("change", handleFileSelect);
+      selectImageBtn.addEventListener("click", () => upload.click());
+      
+      // Drag and drop
+      ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+      });
+      
+      ["dragenter", "dragover"].forEach((eventName) => {
+        dropZone.addEventListener(
+          eventName,
+          () => dropZone.classList.add("drag-over"),
+          false
+        );
+      });
+      
+      ["dragleave", "drop"].forEach((eventName) => {
+        dropZone.addEventListener(
+          eventName,
+          () => dropZone.classList.remove("drag-over"),
+          false
+        );
+      });
+      
+      dropZone.addEventListener("drop", handleDrop, false);
+      
+      // Tool buttons
+      Object.entries(toolButtons).forEach(([tool, button]) => {
+        button.addEventListener("click", () => selectTool(tool));
+      });
+      
+      // Canvas interactions
+      canvas.addEventListener("mousedown", handleMouseDown);
+      canvas.addEventListener("mousemove", handleMouseMove);
+      canvas.addEventListener("mouseup", handleMouseUp);
+      canvas.addEventListener("mouseleave", handleMouseLeave);
+
+      // Touch events
+      canvas.addEventListener("touchstart", handleTouchStart);
+      canvas.addEventListener("touchmove", handleTouchMove);
+      canvas.addEventListener("touchend", handleTouchEnd);
+      canvas.addEventListener("touchcancel", handleTouchCancel);
+      
+      // Action buttons
+      applyBtn.addEventListener("click", applyCurrentTool);
+      undoBtn.addEventListener("click", undo);
+      
+      // Option controls
+      controls.blurAmount.addEventListener("input", () => {
+        controls.blurAmountValue.textContent = controls.blurAmount.value;
+      });
+      
+      controls.pixelateSize.addEventListener("input", () => {
+        controls.pixelateSizeValue.textContent = controls.pixelateSize.value;
+      });
+      
+      controls.brushSize.addEventListener("input", () => {
+        controls.brushSizeValue.textContent = controls.brushSize.value;
+      });
+      
+      controls.aspectRatio.addEventListener("change", () => {
+        if (cropper) {
+          const val = eval(controls.aspectRatio.value);
+          cropper.setAspectRatio(val);
+        }
+      });
+      
+      // Window resize
+      window.addEventListener("resize", handleResize);
+    }
+    
+    // Prevent default drag behaviors
+    function preventDefaults(e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    // Handle file selection
+    function handleFileSelect(e) {
+      const files = e.target.files;
+      if (files.length > 0) {
+        handleFiles(files);
+      }
+    }
+    
+    // Handle drag and drop
+    function handleDrop(e) {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      if (files.length > 0) {
+        handleFiles(files);
+      }
+    }
+    
+    // Process uploaded files
+    function handleFiles(files) {
+      const file = files[0];
+      if (!file.type.match("image.*")) {
+        showNotification("Please select a valid image file!", "error");
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        loadImage(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+    
+    // Load image to canvas
+    function loadImage(imageSrc) {
+      img.onload = () => {
+        // Calculate scaling
+        const maxWidth = Math.min(window.innerWidth - 80, 800);
+        const maxHeight = window.innerHeight * 0.6;
+        
+        scaleFactor = Math.min(
+          maxWidth / img.width,
+          maxHeight / img.height,
+          1
+        );
+        
+        // Set canvas dimensions
+        canvas.width = img.width;
+        canvas.height = img.height;
+        canvas.style.width = `${img.width * scaleFactor}px`;
+        canvas.style.height = `${img.height * scaleFactor}px`;
+        
+        // Draw image
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+        
+        // Store original
+        originalImage = new Image();
+        originalImage.src = img.src;
+        
+        // Reset state
+        undoStack = [];
+        saveState();
+        rotationAngle = 0;
+        
+        // Enable download
+        updateDownloadLink();
+        updateInstructions();
+        
+        showNotification("Image loaded successfully!", "success");
+      };
+      
+      img.src = imageSrc;
+    }
+    
+    // Tool selection
+    function selectTool(tool) {
+      currentTool = tool;
+      
+      // Update button states
+      Object.values(toolButtons).forEach((btn) => btn.classList.remove("active"));
+      toolButtons[tool].classList.add("active");
+      
+      // Show/hide tool options
+      Object.values(toolOptions).forEach((option) =>
+        option.classList.remove("active")
+      );
+      if (toolOptions[tool]) {
+        toolOptions[tool].classList.add("active");
+      }
+      
+      // Handle crop tool
+      if (tool === "crop") {
+        initializeCropper();
+        applyBtn.style.display = "flex";
+      } else {
+        destroyCropper();
+        applyBtn.style.display = hasSelection ? "flex" : "none";
+      }
+      
+      // Handle rotate tool
+      if (tool === "rotate") {
+        rotateImage();
+        return;
+      }
+      
+      updateInstructions();
+    }
+    
+    // Update instructions based on current tool
+    function updateInstructions() {
+      const messages = {
+        cut: "Drag vertically to select the area you want to remove and join",
+        blackout: "Drag to select the area you want to black out",
+        blur: "Drag to select the area you want to blur",
+        pixelate: "Drag to select the area you want to pixelate",
+        draw: "Click and drag to draw on the image",
+        rotate: "Click the rotate button to rotate the image 90 degrees",
+        crop: "Drag the corners to select the area you want to crop",
+      };
+      
+      if (!img.src) {
+        instructions.textContent = "Upload an image to get started";
+      } else {
+        instructions.textContent = messages[currentTool] || "Select a tool to begin editing";
+      }
+    }
+    
+    // Mouse event handlers
+    function handleMouseDown(e) {
+      if (!img.src || currentTool === "crop") return;
+      
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / scaleFactor;
+      const y = (e.clientY - rect.top) / scaleFactor;
+      
+      if (currentTool === "draw") {
+        isDrawing = true;
+        lastX = x;
+        lastY = y;
+        
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.strokeStyle = controls.drawColor.value;
+        ctx.lineWidth = parseInt(controls.brushSize.value);
+        return;
+      }
+      
+      isDragging = true;
+      startX = x;
+      startY = y;
+      hasSelection = false;
+      applyBtn.style.display = "flex";
+    }
+    
+    function handleMouseMove(e) {
+      if (!img.src || currentTool === "crop") return;
+      
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / scaleFactor;
+      const y = (e.clientY - rect.top) / scaleFactor;
+      
+      if (currentTool === "draw" && isDrawing) {
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        lastX = x;
+        lastY = y;
+        return;
+      }
+      
+      if (!isDragging) return;
+      
+      endX = x;
+      endY = y;
+      
+      drawSelection();
+    }
+    
+    function handleMouseUp() {
+      if (currentTool === "draw") {
+        if (isDrawing) {
+          isDrawing = false;
+          saveState();
+          updateDownloadLink();
+        }
+        return;
+      }
+      
+      if (!isDragging || !img.src) return;
+      
+      isDragging = false;
+      hasSelection = true;
+      
+      // Auto-apply for blur and pixelate
+      if (currentTool === "blur" || currentTool === "pixelate") {
+        applyCurrentTool();
+      }
+    }
+    
+    function handleMouseLeave() {
+      isDragging = false;
+      isDrawing = false;
+    }
+
+    // Touch event handlers
+    function handleTouchStart(e) {
+      e.preventDefault(); // Prevent scrolling and zooming
+      if (!img.src || currentTool === "crop") return;
+
+      const touch = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      const x = (touch.clientX - rect.left) / scaleFactor;
+      const y = (touch.clientY - rect.top) / scaleFactor;
+
+      if (currentTool === "draw") {
+        isDrawing = true;
+        lastX = x;
+        lastY = y;
+
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.strokeStyle = controls.drawColor.value;
+        ctx.lineWidth = parseInt(controls.brushSize.value);
+        return;
+      }
+
+      isDragging = true;
+      startX = x;
+      startY = y;
+      hasSelection = false;
+      applyBtn.style.display = "flex";
+    }
+
+    function handleTouchMove(e) {
+      e.preventDefault(); // Prevent scrolling and zooming
+      if (!img.src || currentTool === "crop") return;
+
+      const touch = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      const x = (touch.clientX - rect.left) / scaleFactor;
+      const y = (touch.clientY - rect.top) / scaleFactor;
+
+      if (currentTool === "draw" && isDrawing) {
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        lastX = x;
+        lastY = y;
+        return;
+      }
+
+      if (!isDragging) return;
+
+      endX = x;
+      endY = y;
+
+      drawSelection();
+    }
+
+    function handleTouchEnd() {
+      if (currentTool === "draw") {
+        if (isDrawing) {
+          isDrawing = false;
+          saveState();
+          updateDownloadLink();
+        }
+        return;
+      }
+
+      if (!isDragging || !img.src) return;
+
+      isDragging = false;
+      hasSelection = true;
+
+      // Auto-apply for blur and pixelate
+      if (currentTool === "blur" || currentTool === "pixelate") {
+        applyCurrentTool();
+      }
+    }
+
+    function handleTouchCancel() {
+      isDragging = false;
+      isDrawing = false;
+    }
+    
+    // Draw selection overlay
+    function drawSelection() {
+      // Redraw original image
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      
+      if (!isDragging && !hasSelection) return;
+      
+      const x = Math.min(startX, endX);
+      const y = Math.min(startY, endY);
+      const w = currentTool === "cut" ? canvas.width : Math.abs(endX - startX);
+      const h = Math.abs(endY - startY);
+      
+      // Draw selection overlay
+      ctx.fillStyle = getSelectionColor();
+      ctx.fillRect(currentTool === "cut" ? 0 : x, y, w, h);
+      
+      // Draw border
+      ctx.strokeStyle = getBorderColor();
+      ctx.lineWidth = 2;
+      ctx.strokeRect(currentTool === "cut" ? 0 : x, y, w, h);
+    }
+    
+    // Get selection overlay color based on tool
+    function getSelectionColor() {
+      const colors = {
+        cut: "rgba(239, 68, 68, 0.3)",
+        blackout: "rgba(0, 255, 157, 0.2)",
+        blur: "rgba(99, 102, 241, 0.2)",
+        pixelate: "rgba(245, 158, 11, 0.2)",
+      };
+      return colors[currentTool] || "rgba(255, 255, 255, 0.2)";
+    }
+    
+    // Get border color based on tool
+    function getBorderColor() {
+      const colors = {
+        cut: "#ef4444",
+        blackout: controls.blackoutColor.value,
+        blur: "#6366f1",
+        pixelate: "#f59e0b",
+      };
+      return colors[currentTool] || "#ffffff";
+    }
+    
+    // Apply current tool effect
+    function applyCurrentTool() {
+      if (!hasSelection && currentTool !== "crop") {
+        showNotification("Please make a selection first!", "error");
+        return;
+      }
+      
+      saveState();
+      
+      switch (currentTool) {
+        case "cut":
+          applyCut();
+          break;
+        case "blackout":
+          applyBlackout();
+          break;
+        case "blur":
+          applyBlur();
+          break;
+        case "pixelate":
+          applyPixelate();
+          break;
+        case "crop":
+          applyCrop();
+          break;
+      }
+      
+      hasSelection = false;
+      applyBtn.style.display = "none";
+      updateDownloadLink();
+    }
+    
+    // Apply cut effect
+    function applyCut() {
+      const topY = Math.min(startY, endY);
+      const bottomY = Math.max(startY, endY);
+      const cutHeight = bottomY - topY;
+      
+      if (cutHeight <= 0) {
+        showNotification("Invalid selection area", "error");
+        return;
+      }
+      
+      const newHeight = canvas.height - cutHeight;
+      const tempCanvas = document.createElement("canvas");
+      const tempCtx = tempCanvas.getContext("2d");
+      
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = newHeight;
+      
+      // Draw top part
+      tempCtx.drawImage(canvas, 0, 0, canvas.width, topY, 0, 0, canvas.width, topY);
+      
+      // Draw bottom part
+      const remainingHeight = canvas.height - bottomY;
+      tempCtx.drawImage(
+        canvas,
+        0,
+        bottomY,
+        canvas.width,
+        remainingHeight,
+        0,
+        topY,
+        canvas.width,
+        remainingHeight
+      );
+      
+      // Update canvas
+      canvas.height = newHeight;
+      canvas.style.height = `${newHeight * scaleFactor}px`;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(tempCanvas, 0, 0);
+      
+      img.src = canvas.toDataURL();
+      showNotification("Section removed successfully!", "success");
+    }
+    
+    // Apply blackout effect
+    function applyBlackout() {
+      const x = Math.min(startX, endX);
+      const y = Math.min(startY, endY);
+      const w = Math.abs(endX - startX);
+      const h = Math.abs(endY - startY);
+      
+      ctx.fillStyle = controls.blackoutColor.value;
+      ctx.fillRect(x, y, w, h);
+      
+      img.src = canvas.toDataURL();
+      showNotification("Area blacked out successfully!", "success");
+    }
+    
+    // Apply blur effect
+    function applyBlur() {
+      const x = Math.min(startX, endX);
+      const y = Math.min(startY, endY);
+      const w = Math.abs(endX - startX);
+      const h = Math.abs(endY - startY);
+      const amount = parseInt(controls.blurAmount.value);
+      
+      // Redraw original first
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      
+      // Apply blur
+      blurRegion(x, y, w, h, amount);
+      
+      img.src = canvas.toDataURL();
+      showNotification("Area blurred successfully!", "success");
+    }
+    
+    // Apply pixelate effect
+    function applyPixelate() {
+      const x = Math.min(startX, endX);
+      const y = Math.min(startY, endY);
+      const w = Math.abs(endX - startX);
+      const h = Math.abs(endY - startY);
+      const pixelSize = parseInt(controls.pixelateSize.value);
+      
+      // Redraw original first
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      
+      // Apply pixelate
+      pixelateRegion(x, y, w, h, pixelSize);
+      
+      img.src = canvas.toDataURL();
+      showNotification("Area pixelated successfully!", "success");
+    }
+    
+    // Blur region implementation
+    function blurRegion(x, y, width, height, blurAmount) {
+      const tempCanvas = document.createElement("canvas");
+      const tempCtx = tempCanvas.getContext("2d");
+      tempCanvas.width = width;
+      tempCanvas.height = height;
+      
+      tempCtx.drawImage(canvas, x, y, width, height, 0, 0, width, height);
+      tempCtx.filter = `blur(${blurAmount}px)`;
+      tempCtx.drawImage(tempCanvas, 0, 0);
+      
+      ctx.drawImage(tempCanvas, 0, 0, width, height, x, y, width, height);
+    }
+    
+    // Pixelate region implementation
+    function pixelateRegion(x, y, width, height, pixelSize) {
+      const tempCanvas = document.createElement("canvas");
+      const tempCtx = tempCanvas.getContext("2d");
+      tempCanvas.width = width;
+      tempCanvas.height = height;
+      
+      tempCtx.drawImage(canvas, x, y, width, height, 0, 0, width, height);
+      
+      const scaledWidth = Math.max(1, Math.floor(width / pixelSize));
+      const scaledHeight = Math.max(1, Math.floor(height / pixelSize));
+      
+      const scaledCanvas = document.createElement("canvas");
+      const scaledCtx = scaledCanvas.getContext("2d");
+      scaledCanvas.width = scaledWidth;
+      scaledCanvas.height = scaledHeight;
+      
+      scaledCtx.imageSmoothingEnabled = false;
+      scaledCtx.drawImage(tempCanvas, 0, 0, scaledWidth, scaledHeight);
+      
+      tempCtx.imageSmoothingEnabled = false;
+      tempCtx.drawImage(
+        scaledCanvas,
+        0,
+        0,
+        scaledWidth,
+        scaledHeight,
+        0,
+        0,
+        width,
+        height
+      );
+      
+      ctx.drawImage(tempCanvas, 0, 0, width, height, x, y, width, height);
+    }
+    
+    // Rotate image
+    function rotateImage() {
+      if (!img.src) {
+        showNotification("Please upload an image first!", "error");
+        return;
+      }
+      
+      saveState();
+      rotationAngle = (rotationAngle + 90) % 360;
+      
+      const tempCanvas = document.createElement("canvas");
+      const tempCtx = tempCanvas.getContext("2d");
+      
+      if (rotationAngle % 180 === 90) {
+        tempCanvas.width = canvas.height;
+        tempCanvas.height = canvas.width;
+      } else {
+        tempCanvas.width = canvas.width;
+        tempCanvas.height = canvas.height;
+      }
+      
+      tempCtx.save();
+      tempCtx.translate(tempCanvas.width / 2, tempCanvas.height / 2);
+      tempCtx.rotate((90 * Math.PI) / 180);
+      tempCtx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2);
+      tempCtx.restore();
+      
+      canvas.width = tempCanvas.width;
+      canvas.height = tempCanvas.height;
+      
+      const maxWidth = Math.min(window.innerWidth - 80, 800);
+      const maxHeight = window.innerHeight * 0.6;
+      scaleFactor = Math.min(
+        maxWidth / canvas.width,
+        maxHeight / canvas.height,
+        1
+      );
+      
+      canvas.style.width = `${canvas.width * scaleFactor}px`;
+      canvas.style.height = `${canvas.height * scaleFactor}px`;
+      
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(tempCanvas, 0, 0);
+      
+      img.src = canvas.toDataURL();
+      updateDownloadLink();
+      
+      showNotification("Image rotated successfully!", "success");
+    }
+    
+    // Initialize cropper
+    function initializeCropper() {
+      if (!img.src) return;
+      
+      destroyCropper();
+      
+      canvas.style.width = "auto";
+      canvas.style.height = "auto";
+      
+      cropper = new Cropper(canvas, {
+        viewMode: 1,
+        responsive: true,
+        background: false,
+        zoomable: false,
+        movable: false,
+        rotatable: false,
+        scalable: false,
+        cropBoxMovable: true,
+        cropBoxResizable: true,
+        autoCrop: false,
+        guides: true,
+        highlight: true,
+        dragMode: "crop",
+      });
+      
+      const val = eval(controls.aspectRatio.value);
+      cropper.setAspectRatio(val);
+    }
+    
+    // Apply crop
+    function applyCrop() {
+      if (!cropper) {
+        showNotification("Please select a crop area first!", "error");
+        return;
+      }
+      
+      const croppedCanvas = cropper.getCroppedCanvas({
+        imageSmoothingQuality: "high",
+      });
+      if (!croppedCanvas) {
+        showNotification("Please select a crop area first!", "error");
+        return;
+      }
+      
+      saveState();
+      
+      canvas.width = croppedCanvas.width;
+      canvas.height = croppedCanvas.height;
+      
+      const maxWidth = Math.min(window.innerWidth - 80, 800);
+      const maxHeight = window.innerHeight * 0.6;
+      scaleFactor = Math.min(
+        maxWidth / canvas.width,
+        maxHeight / canvas.height,
+        1
+      );
+      
+      canvas.style.width = `${canvas.width * scaleFactor}px`;
+      canvas.style.height = `${canvas.height * scaleFactor}px`;
+      
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(croppedCanvas, 0, 0);
+      
+      img.src = canvas.toDataURL();
+      
+      destroyCropper();
+      selectTool("cut");
+      updateDownloadLink();
+      
+      showNotification("Image cropped successfully!", "success");
+    }
+    
+    // Destroy cropper
+    function destroyCropper() {
+      if (cropper) {
+        cropper.destroy();
+        cropper = null;
+        
+        // Restore canvas styling
+        if (img.src) {
+          canvas.style.width = `${canvas.width * scaleFactor}px`;
+          canvas.style.height = `${canvas.height * scaleFactor}px`;
+        }
+      }
+    }
+    
+    // Save state for undo
+    function saveState() {
+      if (undoStack.length >= maxUndoSteps) {
+        undoStack.shift();
+      }
+      undoStack.push({
+        imageData: canvas.toDataURL(),
+        width: canvas.width,
+        height: canvas.height,
+      });
+    }
+    
+    // Undo last action
+    function undo() {
+      if (undoStack.length === 0) {
+        showNotification("Nothing to undo!", "error");
+        return;
+      }
+      
+      const state = undoStack.pop();
+      
+      const tempImg = new Image();
+      tempImg.onload = () => {
+        canvas.width = state.width;
+        canvas.height = state.height;
+        
+        const maxWidth = Math.min(window.innerWidth - 80, 800);
+        const maxHeight = window.innerHeight * 0.6;
+        scaleFactor = Math.min(
+          maxWidth / canvas.width,
+          maxHeight / canvas.height,
+          1
+        );
+        
+        canvas.style.width = `${canvas.width * scaleFactor}px`;
+        canvas.style.height = `${canvas.height * scaleFactor}px`;
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(tempImg, 0, 0);
+        
+        img.src = state.imageData;
+        updateDownloadLink();
+        
+        showNotification("Action undone!", "success");
+      };
+      
+      tempImg.src = state.imageData;
+    }
+    
+    // Update download link
+    function updateDownloadLink() {
+      if (img.src) {
+        downloadLink.href = canvas.toDataURL();
+        downloadLink.classList.add("active");
+      } else {
+        downloadLink.classList.remove("active");
+      }
+    }
+    
+    // Handle window resize
+    function handleResize() {
+      if (img.src) {
+        const maxWidth = Math.min(window.innerWidth - 80, 800);
+        const maxHeight = window.innerHeight * 0.6;
+        
+        scaleFactor = Math.min(
+          maxWidth / canvas.width,
+          maxHeight / canvas.height,
+          1
+        );
+        
+        canvas.style.width = `${canvas.width * scaleFactor}px`;
+        canvas.style.height = `${canvas.height * scaleFactor}px`;
+      }
+    }
+    
+    // Show notification
+    function showNotification(message, type = "success") {
+      const notification = document.createElement("div");
+      notification.className = `notification ${type}`;
+      notification.textContent = message;
+      
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        notification.style.animation = "slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1) reverse";
+        setTimeout(() => {
+          if (document.body.contains(notification)) {
+            document.body.removeChild(notification);
+          }
+        }, 400);
+      }, 3000);
+    }
+    
+    // Initialize the application
+    init();
+</script>
+</body>
+</html>
